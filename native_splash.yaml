@@ -1,0 +1,13 @@
+flutter_native_splash:
+  android: true
+  ios: true
+  web: false
+
+  color: "#043B54"
+  image: "assets/logo.png"
+  branding: "assets/icons/jbh_logo.png"
+
+  android_12:
+    color: "#043B54"
+    image: "assets/logo.png"
+    branding: "assets/icons/jbh_logo.png"
