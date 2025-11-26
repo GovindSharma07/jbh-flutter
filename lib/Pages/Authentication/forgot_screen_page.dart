@@ -24,16 +24,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen for successful request to navigate to verification
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (previous != null &&
           previous.isLoading &&
           next.error == null &&
           next.tempEmail != null) {
-        // Successful request, navigate to verification
-        Navigator.pushNamed(context, AppRoutes.verification);
+        // Success: OTP sent -> Navigate to Reset Password Screen
+        // (Make sure to register this route in app_routes.dart)
+        Navigator.pushNamed(context, AppRoutes.resetPassword);
       } else if (next.error != null) {
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );

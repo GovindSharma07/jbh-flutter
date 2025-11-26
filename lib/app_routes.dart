@@ -26,6 +26,7 @@ import 'package:jbh_academy/Pages/score_&_result_screen.dart'; // Scholarship re
 import 'package:jbh_academy/Pages/syllabus_and_module.dart';
 import 'package:jbh_academy/Pages/time_table_screen.dart';
 
+import 'Pages/Authentication/reset_password_screen.dart';
 import 'Pages/assignment_screen.dart';
 import 'Pages/attendance_screen.dart';
 import 'Pages/course/course_detail_screen.dart';
@@ -68,6 +69,7 @@ class AppRoutes {
   static const String applyScholarship = "/apply-scholarship";
   static const String syllabusModule = "/syllabus-module";
   static const String attendance = "/attendance";
+  static const String resetPassword = "/reset-password";
 }
 
 /// This map links a route name (from AppRoutes) to a screen (Widget).
@@ -123,4 +125,5 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.applyScholarship: (context) => const ApplyScholarshipScreen(),
   AppRoutes.syllabusModule: (context) => const SyllabusModulesScreen(),
   AppRoutes.attendance: (context) => const AttendanceScreen(),
+  AppRoutes.resetPassword: (context) => const ResetPasswordScreen(),
 };

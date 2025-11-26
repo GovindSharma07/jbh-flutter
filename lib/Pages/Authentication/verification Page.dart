@@ -14,68 +14,37 @@ class VerificationPage extends ConsumerStatefulWidget {
 }
 
 class _VerificationPageState extends ConsumerState<VerificationPage> {
-  // Controllers to track the input of each digit
-  final List<TextEditingController> _emailOtpControllers = List.generate(
-    6,
-    (index) => TextEditingController(),
-  );
-  final List<TextEditingController> _mobileOtpControllers = List.generate(
-    6,
-    (index) => TextEditingController(),
-  );
-
-  final List<FocusNode> _emailFocusNodes = List.generate(
-    6,
-    (index) => FocusNode(),
-  );
-  final List<FocusNode> _mobileFocusNodes = List.generate(
-    6,
-    (index) => FocusNode(),
-  );
+  final List<TextEditingController> _emailOtpControllers = List.generate(6, (index) => TextEditingController());
+  final List<TextEditingController> _mobileOtpControllers = List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _emailFocusNodes = List.generate(6, (index) => FocusNode());
+  final List<FocusNode> _mobileFocusNodes = List.generate(6, (index) => FocusNode());
 
   @override
   void dispose() {
-    // Clean up controllers and focus nodes
-    for (var controller in _emailOtpControllers) {
-      controller.dispose();
-    }
-    for (var controller in _mobileOtpControllers) {
-      controller.dispose();
-    }
-    for (var node in _emailFocusNodes) {
-      node.dispose();
-    }
-    for (var node in _mobileFocusNodes) {
-      node.dispose();
-    }
+    for (var c in _emailOtpControllers) c.dispose();
+    for (var c in _mobileOtpControllers) c.dispose();
+    for (var n in _emailFocusNodes) n.dispose();
+    for (var n in _mobileFocusNodes) n.dispose();
     super.dispose();
   }
 
-  // Helper function to concatenate the 6 digits
-  String _getOtpCode(List<TextEditingController> controllers) {
-    return controllers.map((c) => c.text).join();
-  }
+  String _getOtpCode(List<TextEditingController> controllers) => controllers.map((c) => c.text).join();
 
-  // Helper function to check if all fields in both sets are filled
-  bool _checkIfAllFilled() {
-    for (var controller in _emailOtpControllers) {
-      if (controller.text.isEmpty) return false;
+  // Updated to only check required fields
+  bool _checkIfAllFilled(bool showEmail, bool showPhone) {
+    if (showEmail) {
+      for (var c in _emailOtpControllers) if (c.text.isEmpty) return false;
     }
-    for (var controller in _mobileOtpControllers) {
-      if (controller.text.isEmpty) return false;
+    if (showPhone) {
+      for (var c in _mobileOtpControllers) if (c.text.isEmpty) return false;
     }
     return true;
   }
 
-  // Helper widget to build the OTP field
-  Widget _buildOtpField(
-    int index,
-    List<TextEditingController> controllers,
-    List<FocusNode> nodes,
-  ) {
+  Widget _buildOtpField(int index, List<TextEditingController> controllers, List<FocusNode> nodes) {
     return Container(
-      width: 55,
-      height: 55,
+      width: 45,
+      height: 50,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -86,54 +55,33 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         decoration: const InputDecoration(
           counterText: "",
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 10),
+          contentPadding: EdgeInsets.symmetric(vertical: 12),
         ),
         onChanged: (value) {
           if (value.length == 1) {
-            // Move focus to the next field if a digit is entered
-            if (index < controllers.length - 1) {
-              nodes[index + 1].requestFocus();
-            } else {
-              nodes[index].unfocus();
-            }
-          } else if (value.isEmpty) {
-            // Move focus to the previous field if a digit is deleted
-            if (index > 0) {
-              nodes[index - 1].requestFocus();
-            }
+            if (index < controllers.length - 1) nodes[index + 1].requestFocus();
+            else nodes[index].unfocus();
+          } else if (value.isEmpty && index > 0) {
+            nodes[index - 1].requestFocus();
           }
         },
       ),
     );
   }
 
-  // Updated helper widget to use focus nodes
-  Widget _buildOtpRow(
-    String label,
-    List<TextEditingController> controllers,
-    List<FocusNode> nodes,
-  ) {
+  Widget _buildOtpRow(String label, List<TextEditingController> controllers, List<FocusNode> nodes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(6, (index) {
-            return _buildOtpField(index, controllers, nodes);
-          }),
+          children: List.generate(6, (index) => _buildOtpField(index, controllers, nodes)),
         ),
       ],
     );
@@ -141,26 +89,13 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen for verification success
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
-      if (previous != null &&
-          previous.isLoading &&
-          next.error == null &&
-          next.tempEmail == null) {
-        // Verification is completed (or forgot password was successfully reset/confirmed), navigate to login
+      if (previous != null && previous.isLoading && !next.isLoading && next.error == null && next.tempEmail == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Verification successful. Please log in.'),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Verification successful. Please log in.'), backgroundColor: Colors.green),
         );
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.login,
-          (route) => false,
-        );
-      } else if (next.error != null) {
-        // Show error message
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+      } else if (next.error != null && (previous == null || next.error != previous?.error)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );
@@ -172,11 +107,15 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
     final isSubmitting = authState.isLoading;
     final tempEmail = authState.tempEmail;
 
+    // Determine what to show based on state flags
+    final bool showEmail = !authState.isEmailVerified;
+    final bool showPhone = !authState.isPhoneVerified;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
             children: [
               Expanded(
@@ -185,100 +124,86 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const SizedBox(height: 40),
-                      const Text(
-                        'Verification',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const Text('Verification', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
                       Text(
-                        'Messenger has sent a code to\nverify your account (${tempEmail ?? '...'})',
+                        'We have sent codes for account: ${tempEmail ?? '...'}',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                          height: 1.5,
-                        ),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
                       ),
-                      const SizedBox(height: 50),
-
-                      // Pass controllers and focus nodes
-                      _buildOtpRow('Email OTP', _emailOtpControllers, _emailFocusNodes),
-                      const SizedBox(height: 25),
-                      _buildOtpRow('Mobile OTP', _mobileOtpControllers, _mobileFocusNodes),
                       const SizedBox(height: 40),
+
+                      // Conditionally Render Email OTP Row
+                      if (showEmail) ...[
+                        _buildOtpRow('Email OTP', _emailOtpControllers, _emailFocusNodes),
+                        const SizedBox(height: 25),
+                      ],
+
+                      // Conditionally Render Mobile OTP Row
+                      if (showPhone) ...[
+                        _buildOtpRow('Mobile OTP', _mobileOtpControllers, _mobileFocusNodes),
+                        const SizedBox(height: 40),
+                      ],
 
                       SizedBox(
                         width: double.infinity,
                         height: 55,
                         child: ElevatedButton(
-                          onPressed: isSubmitting || tempEmail == null ? null : () {
-                            if (_checkIfAllFilled()) {
-                              final emailOtp = _getOtpCode(_emailOtpControllers);
-                              final mobileOtp = _getOtpCode(_mobileOtpControllers);
+                          onPressed: isSubmitting || tempEmail == null
+                              ? null
+                              : () {
+                            if (_checkIfAllFilled(showEmail, showPhone)) {
+                              // Only get code if the field is shown
+                              final emailOtp = showEmail ? _getOtpCode(_emailOtpControllers) : null;
+                              final mobileOtp = showPhone ? _getOtpCode(_mobileOtpControllers) : null;
 
-                              // Check the two OTPs against the backend
-                              ref.read(authNotifierProvider.notifier).verifyEmail(emailOtp);
-                              ref.read(authNotifierProvider.notifier).verifyPhone(tempEmail, mobileOtp);
-
+                              ref.read(authNotifierProvider.notifier).verifyOtps(emailOtp, mobileOtp);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Please enter all 6 digits for both Email and Mobile OTP.'),
+                                  content: Text('Please complete all verification fields.'),
                                   backgroundColor: Colors.red,
                                 ),
                               );
                             }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: backgroundColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(Colors.white),
+                            foregroundColor: WidgetStateProperty.all(backgroundColor),
+                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                            overlayColor: WidgetStateProperty.all(Colors.grey.shade200),
                           ),
                           child: isSubmitting
-                              ? const CircularProgressIndicator(color: Color(0xFF003B5C))
-                              : Text(
-                            'Verify',
-                            style: TextStyle(
-                              color: backgroundColor,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              ? Center(
+                            child: SizedBox(
+                              height: 24, width: 24,
+                              child: CircularProgressIndicator(color: backgroundColor, strokeWidth: 3),
                             ),
-                          ),
+                          )
+                              : const Text('Verify', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(height: 20),
 
-                      const ResendTimer(),
+                      ResendTimer(
+                        onResend: () async {
+                          try {
+                            await ref.read(authNotifierProvider.notifier).resendOtps();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Codes resent successfully'), backgroundColor: Colors.green),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
               ),
-              Column(
-                children: [
-                  Image.asset(
-                    'assets/icons/jbh_logo.png',
-                    height: 50,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.public,
-                        color: Colors.green,
-                        size: 50,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'www.jbhtechacademy.com',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ),
+              // ... Logo Section ...
             ],
           ),
         ),

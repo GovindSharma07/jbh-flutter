@@ -13,19 +13,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     fetchAuthenticatedUser();
   }
 
-  // --- FIX: Static method required by dioProvider to break the cycle ---
   static void triggerLogout(Ref ref) {
     ref.read(authNotifierProvider.notifier).logout();
   }
-  // ----------------------------------------------------------------------
 
   String _extractErrorMessage(DioException e) {
     return e.response?.data?['message'] ?? 'Network error. Please try again.';
   }
-
-  // ------------------------------------
-  // CORE AUTHENTICATION LIFECYCLE
-  // ------------------------------------
 
   Future<void> fetchAuthenticatedUser() async {
     final token = await _storage.getToken();
@@ -33,7 +27,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState.initial();
       return;
     }
-
     state = state.asLoading();
     try {
       final response = await _dio.get('/users/me');
@@ -49,10 +42,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = AuthState.initial();
   }
 
-  // ------------------------------------
-  // LOGIN / REGISTER
-  // ------------------------------------
-
   Future<void> login(String email, String password) async {
     state = state.asLoading();
     try {
@@ -63,13 +52,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final token = response.data['token'] as String;
       await _storage.saveToken(token);
-
       await fetchAuthenticatedUser();
 
     } on DioException catch (e) {
-      state = state.asError(_extractErrorMessage(e));
+      if (e.response?.statusCode == 403) {
+        // --- EXTRACT FLAGS FROM BACKEND ---
+        final data = e.response?.data;
+        state = AuthState.initial().copyWith(
+          tempEmail: email,
+          error: null,
+          isEmailVerified: data['isEmailVerified'] ?? false,
+          isPhoneVerified: data['isPhoneVerified'] ?? false,
+        );
+      } else {
+        state = state.asError(_extractErrorMessage(e));
+      }
     } catch (e) {
-      state = state.asError('An unexpected error occurred during login.');
+      state = state.asError('Unexpected error during login.');
     }
   }
 
@@ -82,76 +81,105 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'password': password,
         'phone': phone,
       });
-
-      state = AuthState.initial().copyWith(tempEmail: email, error: null);
-
+      // Initial registration state: both are false
+      state = AuthState.initial().copyWith(
+          tempEmail: email,
+          error: null,
+          isEmailVerified: false,
+          isPhoneVerified: false
+      );
     } on DioException catch (e) {
       state = state.asError(_extractErrorMessage(e));
     } catch (e) {
-      state = state.asError('An unexpected error occurred during registration.');
+      state = state.asError('Unexpected error during registration.');
     }
   }
 
-  // ------------------------------------
-  // VERIFICATION
-  // ------------------------------------
+  // --- UPDATED: Accept nullable codes to verify only what is needed ---
+  Future<void> verifyOtps(String? emailOtp, String? mobileOtp) async {
+    if (state.tempEmail == null) return;
 
-  Future<void> verifyEmail(String token) async {
-    state = state.copyWith(isLoading: true, error: null);
+    // Retain all current flags while loading
+    state = state.asLoading().copyWith(
+      tempEmail: state.tempEmail,
+      isEmailVerified: state.isEmailVerified,
+      isPhoneVerified: state.isPhoneVerified,
+    );
+
     try {
-      await _dio.post('/auth/verify-email', data: {
-        'token': token,
-      });
+      // Only call verify-email if a code was provided
+      if (emailOtp != null && emailOtp.isNotEmpty) {
+        await _dio.post('/auth/verify-email', data: {
+          'email': state.tempEmail,
+          'code': emailOtp,
+        });
+      }
 
-      state = state.copyWith(isLoading: false, error: null);
+      // Only call verify-phone if a code was provided
+      if (mobileOtp != null && mobileOtp.isNotEmpty) {
+        await _dio.post('/auth/verify-phone', data: {
+          'email': state.tempEmail,
+          'code': mobileOtp,
+        });
+      }
+
+      // If we reach here, whatever we attempted succeeded.
+      // Success: clear everything to navigate to login.
+      state = AuthState.initial();
 
     } on DioException catch (e) {
-      state = state.asError(_extractErrorMessage(e));
+      // Preserve flags on error so UI doesn't flicker/reset
+      state = state.asError(_extractErrorMessage(e)).copyWith(
+        tempEmail: state.tempEmail,
+        isEmailVerified: state.isEmailVerified,
+        isPhoneVerified: state.isPhoneVerified,
+      );
     } catch (e) {
-      state = state.asError('An unexpected error occurred during email verification.');
+      state = state.asError('Verification failed.').copyWith(
+        tempEmail: state.tempEmail,
+        isEmailVerified: state.isEmailVerified,
+        isPhoneVerified: state.isPhoneVerified,
+      );
     }
   }
 
-  Future<void> verifyPhone(String email, String code) async {
-    state = state.copyWith(isLoading: true, error: null);
+  Future<void> resendOtps() async {
+    if (state.tempEmail == null) return;
     try {
-      await _dio.post('/auth/verify-phone', data: {
-        'email': email,
-        'code': code,
-      });
-
-      state = AuthState.initial().copyWith(tempEmail: null, error: null);
-
+      await _dio.post('/auth/resend-otp', data: {'email': state.tempEmail});
     } on DioException catch (e) {
-      state = state.asError(_extractErrorMessage(e));
-    } catch (e) {
-      state = state.asError('An unexpected error occurred during phone verification.');
+      throw _extractErrorMessage(e);
     }
   }
 
-  // ------------------------------------
-  // PASSWORD RESET
-  // ------------------------------------
-
+  // ... (rest of class same as before) ...
   Future<void> requestPasswordReset(String email) async {
     state = state.asLoading().copyWith(tempEmail: email);
     try {
-      await _dio.post('/auth/forgot-password', data: {
-        'email': email,
-      });
-
+      await _dio.post('/auth/forgot-password', data: {'email': email});
       state = AuthState.initial().copyWith(tempEmail: email, error: null);
-
     } on DioException catch (e) {
       state = state.asError(_extractErrorMessage(e));
-    } catch (e) {
-      state = state.asError('An unexpected error occurred during password reset request.');
+    }
+  }
+
+  Future<void> resetPassword(String otp, String newPassword) async {
+    if(state.tempEmail == null) return;
+    state = state.asLoading().copyWith(tempEmail: state.tempEmail);
+    try {
+      await _dio.post('/auth/reset-password', data: {
+        'email': state.tempEmail,
+        'otp': otp,
+        'newPassword': newPassword
+      });
+      state = AuthState.initial();
+    } on DioException catch (e) {
+      state = state.asError(_extractErrorMessage(e)).copyWith(tempEmail: state.tempEmail);
     }
   }
 }
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  // Use the corrected dioProvider, passing the current ref instance
   final dio = ref.watch(dioProvider(ref));
   final storage = ref.watch(secureStorageServiceProvider);
   return AuthNotifier(dio, ref, storage);

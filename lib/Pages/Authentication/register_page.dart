@@ -79,18 +79,18 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ),
             suffixIcon: isPassword
                 ? IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: Colors.grey[400],
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
-                  )
+              icon: Icon(
+                _isPasswordVisible
+                    ? Icons.visibility
+                    : Icons.visibility_off,
+                color: Colors.grey[400],
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible = !_isPasswordVisible;
+                });
+              },
+            )
                 : null,
           ),
         ),
@@ -107,8 +107,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       if (previous != null && previous.isLoading && next.error == null && next.tempEmail != null) {
         // Successful registration, navigate to verification
         Navigator.pushNamed(context, AppRoutes.verification);
-      } else if (next.error != null) {
-        // Show error message
+      }
+      // --- FIX: Check if error is NEW to prevent double snackbars ---
+      else if (next.error != null && (previous == null || next.error != previous.error)) {
+        // Show error message only if it's different from the previous state
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );
@@ -205,6 +207,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   ),
 
                   // --- PASSWORD ---
+                  // Updated Validation Logic to match Backend
                   _buildTextFormField(
                     label: 'Password',
                     hint: 'Password',
@@ -214,8 +217,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a password';
                       }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
+
+                      // Backend Rule: min 8 characters, 1 uppercase, 1 lowercase, 1 number
+                      String pattern = r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$';
+                      RegExp regExp = RegExp(pattern);
+
+                      if (!regExp.hasMatch(value)) {
+                        return 'Min 8 chars: 1 Upper, 1 Lower, 1 Number required';
                       }
                       return null;
                     },
@@ -275,7 +283,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           Navigator.pushNamedAndRemoveUntil(
                             context,
                             AppRoutes.login,
-                              (routes) => false,
+                                (routes) => false,
                           );
                         },
                         child: const Text(

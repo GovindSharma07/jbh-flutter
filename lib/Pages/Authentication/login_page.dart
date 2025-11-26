@@ -13,11 +13,9 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  // Key to identify the form and run validation
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
 
-  // Controllers to retrieve text if needed later
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -30,17 +28,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen for state changes (successful login or error)
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      // 1. Success: Logged in
       if (next.token != null && next.user != null) {
-        // Successful login, navigate to home and clear navigation stack
         Navigator.pushNamedAndRemoveUntil(
           context,
           AppRoutes.home,
-          (route) => false,
+              (route) => false,
         );
-      } else if (next.error != null) {
-        // Show error message
+      }
+      // 2. Unverified: Navigate to Verification (Check tempEmail)
+      else if (next.error == null && next.tempEmail != null) {
+        // Only navigate if we haven't just come from a state that already had this email
+        if (previous?.tempEmail != next.tempEmail) {
+          Navigator.pushNamed(context, AppRoutes.verification);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please verify your account to continue.')),
+          );
+        }
+      }
+      // 3. Error: Show Snackbar (Fix double showing)
+      else if (next.error != null && (previous == null || previous.error != next.error)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );
@@ -56,11 +64,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 60.0),
           child: Form(
-            key: _formKey, // Assigning the key to the Form
+            key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                // Welcome Text
                 const SizedBox(height: 40),
                 const Align(
                   alignment: Alignment.center,
@@ -82,134 +89,73 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 50),
 
-                // --- Email Field with Validation ---
-                const Text(
-                  'Gmail',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                // --- Email ---
+                const Text('Gmail', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.black),
-                  // The validator function
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    // Regex for standard email format validation
-                    // Checks for format: text@text.text
-                    bool emailValid = RegExp(
-                      r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
-                    ).hasMatch(value);
-                    if (!emailValid) {
-                      return 'Please enter a valid email format';
-                    }
-                    return null; // Return null if valid
+                    if (value == null || value.isEmpty) return 'Please enter your email';
+                    bool emailValid = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value);
+                    if (!emailValid) return 'Please enter a valid email format';
+                    return null;
                   },
                   decoration: InputDecoration(
                     hintText: 'Email',
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    // Style for validation error text
-                    errorStyle: const TextStyle(
-                      color: Color(0xFFE94B3C), // Red accent color
-                      fontWeight: FontWeight.bold,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 15,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    errorStyle: const TextStyle(color: Color(0xFFE94B3C), fontWeight: FontWeight.bold),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // --- Password Field ---
-                const Text(
-                  'Password',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                // --- Password ---
+                const Text('Password', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
                   style: const TextStyle(color: Colors.black),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
+                    if (value == null || value.isEmpty) return 'Please enter your password';
                     return null;
                   },
-
                   decoration: InputDecoration(
                     hintText: 'Password',
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    errorStyle: const TextStyle(
-                      color: Color(0xFFE94B3C), // Red accent color
-                      fontWeight: FontWeight.bold,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 15,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    errorStyle: const TextStyle(color: Color(0xFFE94B3C), fontWeight: FontWeight.bold),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
+                      icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                     ),
                   ),
                 ),
 
-                // Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, AppRoutes.forgotPassword);
-                    },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(color: Color(0xFFE94B3C)),
-                    ),
+                    onPressed: () => Navigator.pushNamed(context, AppRoutes.forgotPassword),
+                    child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFFE94B3C))),
                   ),
                 ),
                 const SizedBox(height: 30),
 
-                // --- Login Button with Validation Check ---
+                // --- Button ---
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: isSubmitting ? null : () { // Disable when loading
-                      // VALIDATION CHECK:
+                    onPressed: isSubmitting ? null : () {
                       if (_formKey.currentState!.validate()) {
-                        ref.read(authNotifierProvider.notifier).login( // <--- MODIFIED
+                        ref.read(authNotifierProvider.notifier).login(
                           _emailController.text,
                           _passwordController.text,
                         );
@@ -218,53 +164,35 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                     child: isSubmitting
-                        ? const CircularProgressIndicator(color: Color(0xFF1D4D6B)) // <--- NEW
+                        ? const CircularProgressIndicator(color: Color(0xFF1D4D6B))
                         : const Text(
                       'Login',
-                      style: TextStyle(
-                        color: Color(0xFF1D4D6B),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(color: Color(0xFF1D4D6B), fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Create Now
+                // --- Create Account ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    const Text(
-                      "Don't have account?",
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
+                    const Text("Don't have account? ", style: TextStyle(color: Colors.white70, fontSize: 16)),
                     TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, AppRoutes.register);
-                      },
-                      child: const Text(
-                        'Create Now',
-                        style: TextStyle(
-                          color: Color(0xFF3498DB),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
+                      child: const Text('Create Now', style: TextStyle(color: Color(0xFF3498DB), fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 50),
 
-                // Social Icons
+                const SizedBox(height: 50),
+                // Social Icons Row (Simplified for brevity)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
+                  children: [
                     _buildSocialIcon("assets/icons/google_logo.png"),
                     const SizedBox(width: 30),
                     _buildSocialIcon("assets/icons/facebook_logo.png"),
@@ -274,26 +202,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 50),
 
-                // Bottom Logo
+                // Footer Logo
                 Center(
                   child: Column(
                     children: [
-                      Image.asset(
-                        'assets/icons/jbh_logo.png',
-                        height: 60,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.image_not_supported,
-                            color: Colors.white54,
-                            size: 60,
-                          );
-                        },
-                      ),
+                      Image.asset('assets/icons/jbh_logo.png', height: 60, errorBuilder: (c,e,s)=> const Icon(Icons.image, size: 60, color: Colors.white54)),
                       const SizedBox(height: 10),
-                      const Text(
-                        'www.jbhtechacademy.com',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
+                      const Text('www.jbhtechacademy.com', style: TextStyle(color: Colors.white70, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -307,18 +222,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Widget _buildSocialIcon(String imagePath) {
     return Container(
-      width: 45,
-      height: 45,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
+      width: 45, height: 45,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
       padding: const EdgeInsets.all(8),
-      child: Image.asset(
-        imagePath,
-        errorBuilder: (context, error, stackTrace) =>
-            const Icon(Icons.error, color: Colors.red, size: 20),
-      ),
+      child: Image.asset(imagePath, errorBuilder: (c,e,s) => const Icon(Icons.error, color: Colors.red, size: 20)),
     );
   }
 }

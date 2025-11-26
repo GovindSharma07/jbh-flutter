@@ -27,20 +27,26 @@ class User {
   }
 }
 
-// Define the overall authentication state
 class AuthState {
   final bool isLoading;
   final User? user;
   final String? token;
   final String? error;
-  final String? tempEmail; // Correctly defined field
+  final String? tempEmail;
+
+  // --- NEW FIELDS ---
+  // We default these to false if unknown, but logic handles null check usually
+  final bool isEmailVerified;
+  final bool isPhoneVerified;
 
   AuthState({
     this.isLoading = false,
     this.user,
     this.token,
     this.error,
-    this.tempEmail, // Correctly added to the main constructor
+    this.tempEmail,
+    this.isEmailVerified = false,
+    this.isPhoneVerified = false,
   });
 
   AuthState copyWith({
@@ -48,7 +54,9 @@ class AuthState {
     User? user,
     String? token,
     String? error,
-    String? tempEmail, // Correctly added to copyWith
+    String? tempEmail,
+    bool? isEmailVerified,
+    bool? isPhoneVerified,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -56,13 +64,13 @@ class AuthState {
       token: token ?? this.token,
       error: error,
       tempEmail: tempEmail ?? this.tempEmail,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
     );
   }
 
-  // Helper methods
   factory AuthState.initial() => AuthState();
   AuthState asAuthenticated(User user, String token) => AuthState(user: user, token: token);
   AuthState asLoading() => AuthState(isLoading: true);
   AuthState asError(String error) => AuthState(error: error);
-  AuthState asUnauthenticated({String? tempEmail}) => AuthState(tempEmail: tempEmail);
 }
