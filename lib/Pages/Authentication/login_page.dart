@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../Models/user_model.dart';
 import '../../app_routes.dart';
-// import 'package:jbh_academy/Pages/verification_page.dart'; // Uncomment if you want to navigate there
+import '../../state/auth_notifier.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   // Key to identify the form and run validation
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
@@ -28,6 +30,26 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for state changes (successful login or error)
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (next.token != null && next.user != null) {
+        // Successful login, navigate to home and clear navigation stack
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+          (route) => false,
+        );
+      } else if (next.error != null) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+        );
+      }
+    });
+
+    final authState = ref.watch(authNotifierProvider);
+    final isSubmitting = authState.isLoading;
+
     return Scaffold(
       backgroundColor: Theme.of(context).primaryColor,
       body: SingleChildScrollView(
@@ -82,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                     // Regex for standard email format validation
                     // Checks for format: text@text.text
                     bool emailValid = RegExp(
-                      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+                      r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
                     ).hasMatch(value);
                     if (!emailValid) {
                       return 'Please enter a valid email format';
@@ -184,18 +206,13 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: isSubmitting ? null : () { // Disable when loading
                       // VALIDATION CHECK:
-                      // Only proceed if the form is valid (email format is correct)
                       if (_formKey.currentState!.validate()) {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          AppRoutes.home,
-                          (route) => false,
+                        ref.read(authNotifierProvider.notifier).login( // <--- MODIFIED
+                          _emailController.text,
+                          _passwordController.text,
                         );
-
-                        // If you want to navigate to the OTP Verification page next:
-                        // Navigator.push(context, MaterialPageRoute(builder: (context) => const VerificationPage()));
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -205,7 +222,9 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    child: const Text(
+                    child: isSubmitting
+                        ? const CircularProgressIndicator(color: Color(0xFF1D4D6B)) // <--- NEW
+                        : const Text(
                       'Login',
                       style: TextStyle(
                         color: Color(0xFF1D4D6B),

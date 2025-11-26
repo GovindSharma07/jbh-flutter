@@ -34,7 +34,6 @@ class ApprenticeshipDetailScreen extends StatelessWidget {
 
     final args = ModalRoute.of(context)!.settings.arguments as Map;
     final String title = args['title'];
-    final String company = args['company'];
     final String imagePath = args['imagePath'];
     final String description = args['description'];
     final String duration = args['duration'];

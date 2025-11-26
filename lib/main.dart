@@ -1,24 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jbh_academy/state/auth_notifier.dart';
 import 'package:jbh_academy/theme.dart';
 import 'package:jbh_academy/util.dart';
 
 import 'app_routes.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     TextTheme textTheme = createTextTheme(context, "Poppins", "Poppins");
-
     MaterialTheme theme = MaterialTheme(textTheme);
+
+    final authState = ref.watch(authNotifierProvider);
+
+    String initialRoute;
+    if (authState.token != null && authState.user != null) {
+      initialRoute = AppRoutes.home; // Logged in
+    } else {
+      initialRoute = AppRoutes.login; // Not logged in
+    }
+
+
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: true,
       title: 'JBH Tech Academy',
       theme: theme.light().copyWith(
         // This is the new property you are adding
@@ -31,7 +45,7 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
-      initialRoute: AppRoutes.login,
+      initialRoute: initialRoute,
       routes: appRoutes,
     );
   }

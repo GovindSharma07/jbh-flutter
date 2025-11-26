@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../Models/user_model.dart';
 import '../../app_routes.dart';
+import '../../state/auth_notifier.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
 
@@ -21,8 +24,25 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    Color backgroundColor = Theme.of(context).primaryColor;
+    // Listen for successful request to navigate to verification
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (previous != null &&
+          previous.isLoading &&
+          next.error == null &&
+          next.tempEmail != null) {
+        // Successful request, navigate to verification
+        Navigator.pushNamed(context, AppRoutes.verification);
+      } else if (next.error != null) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+        );
+      }
+    });
 
+    Color backgroundColor = Theme.of(context).primaryColor;
+    final authState = ref.watch(authNotifierProvider);
+    final isSubmitting = authState.isLoading;
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -70,8 +90,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               }
                               // Basic email regex pattern
                               bool emailValid = RegExp(
-                                  r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                                  .hasMatch(value);
+                                r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+                              ).hasMatch(value);
                               if (!emailValid) {
                                 return 'Please enter a valid email format';
                               }
@@ -89,7 +109,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 borderSide: BorderSide.none,
                               ),
                               errorStyle: const TextStyle(
-                                color: Color(0xFFFF6B00), // Orange/Red for error
+                                color: Color(0xFFFF6B00),
+                                // Orange/Red for error
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -126,12 +147,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             width: double.infinity,
                             height: 55,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Validate before navigating
+                              onPressed: isSubmitting ? null : () { // Disable when loading
+                                // Validate before calling API
                                 if (_formKey.currentState!.validate()) {
-                                  Navigator.pushNamed(
-                                    context,
-                                    AppRoutes.verification
+                                  ref.read(authNotifierProvider.notifier).requestPasswordReset( // <--- MODIFIED
+                                    _emailController.text,
                                   );
                                 }
                               },
@@ -143,7 +163,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: Text(
+                              child: isSubmitting
+                                  ? const CircularProgressIndicator(color: Color(0xFF003B5C)) // <--- NEW
+                                  : Text(
                                 'Send OTP',
                                 style: TextStyle(
                                   color: backgroundColor,

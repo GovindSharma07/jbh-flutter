@@ -6,11 +6,11 @@ class TimeTableCard extends StatelessWidget {
   final Color primaryColor;
 
   const TimeTableCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.imagePath,
     required this.primaryColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

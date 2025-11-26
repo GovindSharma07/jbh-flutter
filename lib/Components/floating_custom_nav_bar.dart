@@ -22,7 +22,7 @@ class FloatingCustomNavBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(35), // Fully rounded ends
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2), // Soft shadow
+            color: Colors.black.withValues(alpha: 0.2), // Soft shadow
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -84,7 +84,7 @@ class FloatingCustomNavBar extends StatelessWidget {
     // 4. Set color based on selection
     final Color color = isSelected
         ? Colors.white
-        : Colors.white.withOpacity(0.7);
+        : Colors.white.withValues(alpha: 0.7);
 
     return InkWell(
       // 5. Corrected onTap syntax and completed logic

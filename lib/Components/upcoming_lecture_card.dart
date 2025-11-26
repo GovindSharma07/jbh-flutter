@@ -11,7 +11,7 @@ class UpcomingLectureCard extends StatelessWidget {
   final Color primaryColor;
 
   const UpcomingLectureCard({
-    Key? key,
+    super.key,
     required this.imagePath,
     required this.title,
     required this.date,
@@ -19,7 +19,7 @@ class UpcomingLectureCard extends StatelessWidget {
     required this.instructor,
     required this.reminderTime,
     required this.primaryColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -65,14 +65,14 @@ class UpcomingLectureCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '$time',
+                    time,
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
                     ),
                   ),
                   Text(
-                    '$instructor',
+                    instructor,
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,

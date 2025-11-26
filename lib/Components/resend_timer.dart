@@ -6,7 +6,7 @@ const Color accentOrange = Colors.orange;
 // ---------------------------------------------------------
 
 class ResendTimer extends StatefulWidget {
-  const ResendTimer({Key? key}) : super(key: key);
+  const ResendTimer({super.key});
 
   @override
   State<ResendTimer> createState() => _ResendTimerState();

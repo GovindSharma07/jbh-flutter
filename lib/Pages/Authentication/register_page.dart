@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../Models/user_model.dart';
 import '../../app_routes.dart';
+import '../../state/auth_notifier.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
 
@@ -98,7 +101,23 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for successful registration to navigate to verification
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      // Check if it was loading, succeeded (user is null, error is null), and has a tempEmail
+      if (previous != null && previous.isLoading && next.error == null && next.tempEmail != null) {
+        // Successful registration, navigate to verification
+        Navigator.pushNamed(context, AppRoutes.verification);
+      } else if (next.error != null) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+        );
+      }
+    });
+
     Color backgroundColor = Theme.of(context).primaryColor;
+    final authState = ref.watch(authNotifierProvider);
+    final isSubmitting = authState.isLoading;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -167,19 +186,19 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   // --- MOBILE NUMBER VERIFICATION ---
                   _buildTextFormField(
-                    label: 'Mobile Number',
-                    hint: 'Mobile Number',
+                    label: 'Mobile Number (10 digits)',
+                    hint: '10-digit Mobile Number',
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your mobile number';
                       }
-                      // Verify it contains only digits and is at least 10 digits long
-                      String pattern = r'(^(?:[+0]9)?[0-9]{10,12}$)';
+                      // Check for exactly 10 digits
+                      String pattern = r'^\d{10}$'; // Regex for exactly 10 digits
                       RegExp regExp = RegExp(pattern);
                       if (!regExp.hasMatch(value)) {
-                        return 'Enter a valid mobile number (min 10 digits)';
+                        return 'Mobile number must be exactly 10 digits';
                       }
                       return null;
                     },
@@ -209,12 +228,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: isSubmitting ? null : () { // Disable when loading
                         // Validate all fields before proceeding
                         if (_formKey.currentState!.validate()) {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.verification
+                          ref.read(authNotifierProvider.notifier).register( // <--- MODIFIED
+                            _usernameController.text,
+                            _emailController.text,
+                            _passwordController.text,
+                            _mobileController.text,
                           );
                         }
                       },
@@ -226,7 +247,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         elevation: 2,
                       ),
-                      child: Text(
+                      child: isSubmitting
+                          ? const CircularProgressIndicator(color: Color(0xFF003B5C)) // <--- NEW
+                          : Text(
                         'Sign Up',
                         style: TextStyle(
                           color: backgroundColor,
