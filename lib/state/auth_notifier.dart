@@ -97,11 +97,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  // --- UPDATED: Accept nullable codes to verify only what is needed ---
+// In lib/state/auth_notifier.dart
+
   Future<void> verifyOtps(String? emailOtp, String? mobileOtp) async {
     if (state.tempEmail == null) return;
 
-    // Retain all current flags while loading
+    // Keep loading while preserving current flags
     state = state.asLoading().copyWith(
       tempEmail: state.tempEmail,
       isEmailVerified: state.isEmailVerified,
@@ -109,31 +110,46 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
 
     try {
-      // Only call verify-email if a code was provided
-      if (emailOtp != null && emailOtp.isNotEmpty) {
+      bool newEmailVerified = state.isEmailVerified;
+      bool newPhoneVerified = state.isPhoneVerified;
+
+      // 1. Verify Email if not already verified and OTP is provided
+      if (!newEmailVerified && emailOtp != null && emailOtp.isNotEmpty) {
         await _dio.post('/auth/verify-email', data: {
           'email': state.tempEmail,
           'code': emailOtp,
         });
+        newEmailVerified = true; // Mark locally as true on success
       }
 
-      // Only call verify-phone if a code was provided
-      if (mobileOtp != null && mobileOtp.isNotEmpty) {
+      // 2. Verify Phone if not already verified and OTP is provided
+      if (!newPhoneVerified && mobileOtp != null && mobileOtp.isNotEmpty) {
         await _dio.post('/auth/verify-phone', data: {
           'email': state.tempEmail,
           'code': mobileOtp,
         });
+        newPhoneVerified = true; // Mark locally as true on success
       }
 
-      // If we reach here, whatever we attempted succeeded.
-      // Success: clear everything to navigate to login.
-      state = AuthState.initial();
+      // 3. Check if both are now verified
+      if (newEmailVerified && newPhoneVerified) {
+        // Success: Clear temp state to allow login navigation
+        state = AuthState.initial();
+      } else {
+        // Partial Success: Update flags so UI reflects what passed
+        state = state.copyWith(
+          isLoading: false,
+          isEmailVerified: newEmailVerified,
+          isPhoneVerified: newPhoneVerified,
+          error: null,
+        );
+      }
 
     } on DioException catch (e) {
-      // Preserve flags on error so UI doesn't flicker/reset
+      // On error, keep the flags as they were (or updated if one succeeded before the crash)
       state = state.asError(_extractErrorMessage(e)).copyWith(
         tempEmail: state.tempEmail,
-        isEmailVerified: state.isEmailVerified,
+        isEmailVerified: state.isEmailVerified, // Use current state flags
         isPhoneVerified: state.isPhoneVerified,
       );
     } catch (e) {

@@ -2,9 +2,20 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/state/auth_notifier.dart';
 import 'package:jbh_academy/services/secure_storage_service.dart';
+import "dart:io";
 
 // Ensure this IP is correct for your setup (10.92.128.86 for physical device via WiFi)
-const String _baseUrl = 'http://10.92.128.86:3000/api';
+// Replace the const String _baseUrl line with this getter:
+String get _baseUrl {
+  if (Platform.isAndroid) {
+    return 'http://10.0.2.2:3000/api'; // Android Emulator localhost
+  } else if (Platform.isIOS) {
+    return 'http://127.0.0.1:3000/api'; // iOS Simulator localhost
+  } else {
+    return 'http://localhost:3000/api'; // Web or Desktop
+  }
+  // Note: For physical devices, you must still use your computer's LAN IP (e.g., 192.168.x.x)
+}
 
 final dioProvider = Provider.family<Dio, Ref>((ref, externalRef) {
   final dio = Dio(BaseOptions(baseUrl: _baseUrl));

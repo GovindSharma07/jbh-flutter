@@ -1,216 +1,106 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/Components/common_app_bar.dart';
 import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
-
+import 'package:jbh_academy/state/apprenticeship_state.dart';
 import '../../app_routes.dart';
-// Import the detail screen you just created
 
-class ApprenticeshipsScreen extends StatelessWidget {
+class ApprenticeshipsScreen extends ConsumerWidget {
   const ApprenticeshipsScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    Color primaryColor = Theme.of(context).primaryColor;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final primaryColor = Theme.of(context).primaryColor;
+    final asyncList = ref.watch(apprenticeshipListProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Apprenticeship',
-                  style: TextStyle(
-                    color: primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+      appBar: buildAppBar(context, title: 'Apprenticeships'),
+      body: asyncList.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (list) {
+          if (list.isEmpty) {
+            return const Center(child: Text("No open positions available."));
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(apprenticeshipListProvider.future),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: list.length,
+              itemBuilder: (context, index) {
+                final item = list[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: _ApprenticeshipCard(
+                    item: item,
+                    primaryColor: primaryColor,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.apprenticeshipDetail,
+                        // Pass the Model itself or a Map containing ID
+                        arguments: {
+                          'id': item.id,
+                          'title': item.title,
+                          'company': item.companyName,
+                          'imagePath': item.imageUrl,
+                          'description': item.description,
+                          'duration': item.duration,
+                          'location': item.location,
+                        },
+                      );
+                    },
                   ),
-                ),
-              ),
-              SizedBox(height: 16),
-              ApprenticeshipCard(
-                title: 'Junior Tech Developer',
-                company: 'Tech Solutions',
-                imagePath: 'assets/tech_solutions.png',
-                // Add the onTap callback
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.apprenticeshipDetail,
-                    arguments: {
-                      'title': 'Junior Tech Developer',
-                      'company': 'Tech Solutions',
-                      "imagePath": 'assets/web_dev.png',
-                      "description":
-                          'Learn to build modern, responsive web applications from scratch.',
-                      "duration": '6 Months',
-                      "location": 'On-Site',
-                    },
-                  );
-                },
-                color: primaryColor,
-              ),
-              const SizedBox(height: 16),
-              ApprenticeshipCard(
-                title: 'Web Developer Intern',
-                company: 'Building Co.',
-                imagePath: 'assets/web_dev.png',
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.apprenticeshipDetail,
-                    arguments: {
-                      'title': 'Web Developer Intern',
-                      'company': 'Build Co.',
-                      "imagePath": 'assets/web_dev.png',
-                      "description":
-                          'Learn to build modern, responsive web applications from scratch.',
-                      "duration": '6 Months',
-                      "location": 'On-Site',
-                    },
-                  );
-                },
-                color: primaryColor,
-              ),
-              const SizedBox(height: 16),
-              ApprenticeshipCard(
-                title: 'Graphics Designer',
-                company: 'Nokia',
-                imagePath: 'assets/nokia.png',
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.apprenticeshipDetail,
-                    arguments: {
-                      'title': 'Web Developer Intern',
-                      'company': 'Build Co.',
-                      "imagePath": 'assets/web_dev.png',
-                      "description":
-                          'Learn to build modern, responsive web applications from scratch.',
-                      "duration": '6 Months',
-                      "location": 'On-Site',
-                    },
-                  );
-                },
-                color: primaryColor,
-              ),
-              const SizedBox(height: 16),
-              ApprenticeshipCard(
-                title: 'Data Analyst',
-                company: 'Global Analytics',
-                imagePath: 'assets/data_analyst.png',
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.apprenticeshipDetail,
-                    arguments: {
-                      'title': 'Web Developer Intern',
-                      'company': 'Build Co.',
-                      "imagePath": 'assets/web_dev.png',
-                      "description":
-                          'Learn to build modern, responsive web applications from scratch.',
-                      "duration": '6 Months',
-                      "location": 'On-Site',
-                    },
-                  );
-                },
-                color: primaryColor,
-              ),
-            ],
-          ),
-        ),
+                );
+              },
+            ),
+          );
+        },
       ),
-      bottomNavigationBar: FloatingCustomNavBar(),
+      bottomNavigationBar: const FloatingCustomNavBar(),
     );
   }
 }
 
-// --- Reusable Apprenticeship Card Widget (FIXED) ---
-class ApprenticeshipCard extends StatelessWidget {
-  final String title;
-  final String company;
-  final String imagePath;
-  final VoidCallback onTap; // <-- Was missing in your instance, but in class
-  final Color color;
+class _ApprenticeshipCard extends StatelessWidget {
+  final dynamic item; // Using dynamic to avoid import conflict here, strictly use Apprenticeship model
+  final Color primaryColor;
+  final VoidCallback onTap;
 
-  const ApprenticeshipCard({
-    Key? key,
-    required this.title,
-    required this.company,
-    required this.imagePath,
+  const _ApprenticeshipCard({
+    required this.item,
+    required this.primaryColor,
     required this.onTap,
-    required this.color, // <-- Make sure to pass this
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primaryColor.withOpacity(0.3)),
         boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3)),
         ],
       ),
-      child: InkWell(
-        onTap: onTap, // <-- Use the onTap property from the constructor
-        child: Row(
-          children: [
-            // --- Image ---
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12.0),
-              child: Image.asset(
-                imagePath,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                // Error builder for placeholder
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: color,
-                    child: Icon(Icons.image, color: Colors.grey[400]),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // --- Text Content ---
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    company,
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        onTap: onTap,
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            item.imageUrl,
+            width: 60, height: 60, fit: BoxFit.cover,
+            errorBuilder: (c, e, s) => Container(color: Colors.grey[200], width: 60, height: 60, child: const Icon(Icons.business)),
+          ),
         ),
+        title: Text(item.title, style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
+        subtitle: Text(item.companyName),
+        trailing: item.hasApplied
+            ? const Chip(label: Text("Applied", style: TextStyle(color: Colors.green)))
+            : const Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
   }
