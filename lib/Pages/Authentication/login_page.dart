@@ -38,7 +38,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         );
       }
       // 2. Unverified: Navigate to Verification (Check tempEmail)
-      else if (next.error == null && next.tempEmail != null) {
+      else if (!next.isLoading && next.error == null && next.tempEmail != null) {
         // Only navigate if we haven't just come from a state that already had this email
         if (previous?.tempEmail != next.tempEmail) {
           Navigator.pushNamed(context, AppRoutes.verification);

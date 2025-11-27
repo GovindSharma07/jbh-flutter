@@ -45,8 +45,9 @@ class MyApp extends ConsumerWidget {
           },
         ),
       ),
-      initialRoute: initialRoute,
+      initialRoute: AppRoutes.splash,
       routes: appRoutes,
     );
   }
 }
+

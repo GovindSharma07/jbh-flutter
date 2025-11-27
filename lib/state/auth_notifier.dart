@@ -9,7 +9,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final SecureStorageService _storage;
   final Ref ref;
 
-  AuthNotifier(this._dio, this.ref, this._storage) : super(AuthState.initial()) {
+  AuthNotifier(this._dio, this.ref, this._storage) : super(AuthState(isLoading: true)) {
     fetchAuthenticatedUser();
   }
 
@@ -27,7 +27,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState.initial();
       return;
     }
+
     state = state.asLoading();
+
     try {
       final response = await _dio.get('/users/me');
       final user = User.fromJson(response.data);
