@@ -23,24 +23,46 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> fetchAuthenticatedUser() async {
     final token = await _storage.getToken();
+    final cachedRole = await _storage.getRole(); // Get cached role
+
     if (token == null) {
       state = AuthState.initial();
       return;
     }
 
-    state = state.asLoading();
+    // Create a temporary user object from cached data to allow immediate access
+    if (cachedRole != null) {
+      // We create a "shell" user just to pass the isAdmin check
+      final cachedUser = User(
+          userId: 0,
+          fullName: 'Loading...',
+          email: '',
+          role: cachedRole,
+          isEmailVerified: true,
+          isPhoneVerified: true
+      );
+      state = state.asAuthenticated(cachedUser, token);
+    }
 
     try {
       final response = await _dio.get('/users/me');
       final user = User.fromJson(response.data);
+      // Update with fresh data from server
       state = state.asAuthenticated(user, token);
-    } on DioException catch (_) {
-      await logout();
+      // Refresh cached role just in case
+      await _storage.saveSession(token, user.role);
+    } on DioException catch (e) {
+      // ONLY logout if it's an Authentication error (401).
+      // Do NOT logout for network errors (SocketException, timeout, etc).
+      if (e.response?.statusCode == 401) {
+        await logout();
+      }
+      // Else: Stay logged in with the cachedUser data
     }
   }
 
   Future<void> logout() async {
-    await _storage.deleteToken();
+    await _storage.clearSession();
     state = AuthState.initial();
   }
 
@@ -53,8 +75,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       });
 
       final token = response.data['token'] as String;
-      await _storage.saveToken(token);
-      await fetchAuthenticatedUser();
+
+      // 1. Fetch user immediately to get the role
+      // We need to attach the token manually for this specific request since it's not in storage yet
+      final userResponse = await _dio.get('/users/me', options: Options(headers: {'Authorization': 'Bearer $token'}));
+      final user = User.fromJson(userResponse.data);
+
+      // 2. Save Token AND Role
+      await _storage.saveSession(token, user.role);
+
+      state = state.asAuthenticated(user, token);
 
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {

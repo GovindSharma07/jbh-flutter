@@ -33,21 +33,65 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
           child: Column(
             children: [
               _buildTextField(_nameCtrl, "Full Name"),
-              _buildTextField(_emailCtrl, "Email Address", isEmail: true),
+
+              // --- 1. EMAIL VALIDATION ---
+              _buildTextField(
+                _emailCtrl,
+                "Email Address",
+                isEmail: true,
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return 'Email Address is required';
+                  }
+                  // Regex for standard email format
+                  bool emailValid = RegExp(
+                    r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+                  ).hasMatch(val);
+                  if (!emailValid) {
+                    return 'Enter a valid email address';
+                  }
+                  return null;
+                },
+              ),
+
               _buildTextField(_phoneCtrl, "Phone Number", isPhone: true),
-              _buildTextField(_passCtrl, "Password", isObscure: true),
+
+              // --- 2. PASSWORD VALIDATION ---
+              _buildTextField(
+                _passCtrl,
+                "Password",
+                isObscure: true,
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return 'Password is required';
+                  }
+                  // Regex: Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Number
+                  String pattern =
+                      r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$';
+                  if (!RegExp(pattern).hasMatch(val)) {
+                    return 'Min 8 chars: 1 Upper, 1 Lower, 1 Number';
+                  }
+                  return null;
+                },
+              ),
 
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedRole,
                 decoration: InputDecoration(
-                    labelText: "Role",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true, fillColor: Colors.white
+                  labelText: "Role",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 items: const [
                   DropdownMenuItem(value: 'student', child: Text("Student")),
-                  DropdownMenuItem(value: 'instructor', child: Text("Instructor")),
+                  DropdownMenuItem(
+                    value: 'instructor',
+                    child: Text("Instructor"),
+                  ),
                   DropdownMenuItem(value: 'admin', child: Text("Admin")),
                 ],
                 onChanged: (val) => setState(() => _selectedRole = val!),
@@ -61,11 +105,16 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[800],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Create User", style: TextStyle(fontSize: 18, color: Colors.white)),
+                      : const Text(
+                          "Create User",
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                 ),
               ),
             ],
@@ -75,14 +124,28 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String label, {bool isEmail = false, bool isPhone = false, bool isObscure = false}) {
+  Widget _buildTextField(
+    TextEditingController ctrl,
+    String label, {
+    bool isEmail = false,
+    bool isPhone = false,
+    bool isObscure = false,
+    String? Function(String?)? validator, // <--- 1. Add this parameter
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: ctrl,
         obscureText: isObscure,
-        keyboardType: isEmail ? TextInputType.emailAddress : (isPhone ? TextInputType.phone : TextInputType.text),
-        validator: (val) => val!.isEmpty ? "$label is required" : null,
+        keyboardType: isEmail
+            ? TextInputType.emailAddress
+            : (isPhone ? TextInputType.phone : TextInputType.text),
+
+        // <--- 2. Use the passed validator, or fallback to the default check
+        validator:
+            validator ??
+            (val) => val == null || val.isEmpty ? "$label is required" : null,
+
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -98,19 +161,29 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(adminServiceProvider).createUser(
-        fullName: _nameCtrl.text,
-        email: _emailCtrl.text,
-        password: _passCtrl.text,
-        phone: _phoneCtrl.text,
-        role: _selectedRole,
-      );
+      await ref
+          .read(adminServiceProvider)
+          .createUser(
+            fullName: _nameCtrl.text,
+            email: _emailCtrl.text,
+            password: _passCtrl.text,
+            phone: _phoneCtrl.text,
+            role: _selectedRole,
+          );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User created successfully!"), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("User created successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

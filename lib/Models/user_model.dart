@@ -21,8 +21,9 @@ class User {
       fullName: json['full_name'] as String? ?? 'User',
       email: json['email'] as String,
       role: json['role'] as String,
-      isEmailVerified: json['is_email_verified'] as bool,
-      isPhoneVerified: json['is_phone_verified'] as bool,
+      // Use '?? false' to default to false if null
+      isEmailVerified: (json['is_email_verified'] as bool?) ?? false,
+      isPhoneVerified: (json['is_phone_verified'] as bool?) ?? false,
     );
   }
 }
