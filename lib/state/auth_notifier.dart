@@ -102,61 +102,71 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> verifyOtps(String? emailOtp, String? mobileOtp) async {
     if (state.tempEmail == null) return;
 
-    // Keep loading while preserving current flags
+    // 1. Initialize flags with current values
+    bool currentEmailVerified = state.isEmailVerified;
+    bool currentPhoneVerified = state.isPhoneVerified;
+
+    // 2. Set loading state, preserving current progress
     state = state.asLoading().copyWith(
       tempEmail: state.tempEmail,
-      isEmailVerified: state.isEmailVerified,
-      isPhoneVerified: state.isPhoneVerified,
+      isEmailVerified: currentEmailVerified,
+      isPhoneVerified: currentPhoneVerified,
     );
 
     try {
-      bool newEmailVerified = state.isEmailVerified;
-      bool newPhoneVerified = state.isPhoneVerified;
-
-      // 1. Verify Email if not already verified and OTP is provided
-      if (!newEmailVerified && emailOtp != null && emailOtp.isNotEmpty) {
+      // 3. Verify Email (if not already verified and OTP provided)
+      if (!currentEmailVerified && emailOtp != null && emailOtp.isNotEmpty) {
         await _dio.post('/auth/verify-email', data: {
           'email': state.tempEmail,
           'code': emailOtp,
         });
-        newEmailVerified = true; // Mark locally as true on success
+
+        // SUCCESS: Update flag AND State immediately
+        // This acts as a "save point" in case the next step fails
+        currentEmailVerified = true;
+        state = state.copyWith(
+          isEmailVerified: true,
+          error: null,
+        );
       }
 
-      // 2. Verify Phone if not already verified and OTP is provided
-      if (!newPhoneVerified && mobileOtp != null && mobileOtp.isNotEmpty) {
+      // 4. Verify Phone (if not already verified and OTP provided)
+      if (!currentPhoneVerified && mobileOtp != null && mobileOtp.isNotEmpty) {
         await _dio.post('/auth/verify-phone', data: {
           'email': state.tempEmail,
           'code': mobileOtp,
         });
-        newPhoneVerified = true; // Mark locally as true on success
+
+        // SUCCESS: Update flag
+        currentPhoneVerified = true;
       }
 
-      // 3. Check if both are now verified
-      if (newEmailVerified && newPhoneVerified) {
+      // 5. Final Completion Check
+      if (currentEmailVerified && currentPhoneVerified) {
         // Success: Clear temp state to allow login navigation
         state = AuthState.initial();
       } else {
-        // Partial Success: Update flags so UI reflects what passed
+        // Partial Success: Update state with whatever passed
         state = state.copyWith(
           isLoading: false,
-          isEmailVerified: newEmailVerified,
-          isPhoneVerified: newPhoneVerified,
+          isEmailVerified: currentEmailVerified,
+          isPhoneVerified: currentPhoneVerified,
           error: null,
         );
       }
 
     } on DioException catch (e) {
-      // On error, keep the flags as they were (or updated if one succeeded before the crash)
+      // 6. On Error: Use the LOCAL flags (currentEmailVerified) to preserve progress
       state = state.asError(_extractErrorMessage(e)).copyWith(
         tempEmail: state.tempEmail,
-        isEmailVerified: state.isEmailVerified, // Use current state flags
-        isPhoneVerified: state.isPhoneVerified,
+        isEmailVerified: currentEmailVerified, // Uses the updated value
+        isPhoneVerified: currentPhoneVerified, // Uses the updated value
       );
     } catch (e) {
       state = state.asError('Verification failed.').copyWith(
         tempEmail: state.tempEmail,
-        isEmailVerified: state.isEmailVerified,
-        isPhoneVerified: state.isPhoneVerified,
+        isEmailVerified: currentEmailVerified,
+        isPhoneVerified: currentPhoneVerified,
       );
     }
   }
