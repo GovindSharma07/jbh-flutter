@@ -30,10 +30,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       // 1. Success: Logged in
+      // NEW CODE (Copy this)
       if (next.token != null && next.user != null) {
+        // Determine where to go based on role
+        String nextRoute = AppRoutes.home; // Default to Student
+
+        if (next.user?.role == 'admin') {
+          nextRoute = AppRoutes.adminDashboard;
+        }
+        // Future: else if (next.user?.role == 'instructor') ...
+
         Navigator.pushNamedAndRemoveUntil(
           context,
-          AppRoutes.home,
+          nextRoute,
               (route) => false,
         );
       }

@@ -21,18 +21,9 @@ class MyApp extends ConsumerWidget {
     TextTheme textTheme = createTextTheme(context, "Poppins", "Poppins");
     MaterialTheme theme = MaterialTheme(textTheme);
 
-    final authState = ref.watch(authNotifierProvider);
-
-    String initialRoute;
-    if (authState.token != null && authState.user != null) {
-      initialRoute = AppRoutes.home; // Logged in
-    } else {
-      initialRoute = AppRoutes.login; // Not logged in
-    }
-
 
     return MaterialApp(
-      debugShowCheckedModeBanner: true,
+      debugShowCheckedModeBanner: false,
       title: 'JBH Tech Academy',
       theme: theme.light().copyWith(
         // This is the new property you are adding
@@ -50,4 +41,3 @@ class MyApp extends ConsumerWidget {
     );
   }
 }
-

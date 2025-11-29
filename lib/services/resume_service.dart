@@ -21,6 +21,14 @@ class ResumeService {
     return (response.data as List).map((e) => Resume.fromJson(e)).toList();
   }
 
+  Future<void> deleteResume(int resumeId) async {
+    try {
+      await _dio.delete('/resumes/$resumeId');
+    } on DioException catch (e) {
+      throw e.response?.data['message'] ?? 'Failed to delete resume';
+    }
+  }
+
   // Atomicity: The UI calls this ONE method to handle the complex upload flow
   Future<Resume> uploadResume(String filePath, String fileName) async {
     try {

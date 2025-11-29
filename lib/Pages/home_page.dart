@@ -127,6 +127,7 @@ class HomeScreen extends StatelessWidget {
       "Assignments",
       "Attendance",
       "Quizzes",
+      "Manage Resumes"
     ];
 
     return GridView.builder(
@@ -193,6 +194,9 @@ class HomeScreen extends StatelessWidget {
         break;
       case "Quizzes":
         Navigator.pushNamed(context, AppRoutes.quizzes);
+        break;
+      case "Manage Resumes":
+        Navigator.pushNamed(context, AppRoutes.manageResumes);
         break;
       default:
         // Default action

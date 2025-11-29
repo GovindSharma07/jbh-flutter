@@ -67,7 +67,11 @@ class _AuthGuardScreenState extends ConsumerState<AuthGuardScreen>
       final state = ref.read(authNotifierProvider);
 
       if (state.user != null && state.token != null) {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        if (state.isAdmin) {
+          Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+        } else {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
       } else {
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       }

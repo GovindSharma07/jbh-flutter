@@ -212,3 +212,55 @@ final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref
   final storage = ref.watch(secureStorageServiceProvider);
   return AuthNotifier(dio, ref, storage);
 });
+
+class AuthState {
+  final bool isLoading;
+  final User? user;
+  final String? token;
+  final String? error;
+  final String? tempEmail;
+
+  // --- NEW FIELDS ---
+  // We default these to false if unknown, but logic handles null check usually
+  final bool isEmailVerified;
+  final bool isPhoneVerified;
+
+  AuthState({
+    this.isLoading = false,
+    this.user,
+    this.token,
+    this.error,
+    this.tempEmail,
+    this.isEmailVerified = false,
+    this.isPhoneVerified = false,
+  });
+
+  bool get isAdmin => user?.role == 'admin';
+  bool get isInstructor => user?.role == 'instructor';
+  bool get isStudent => user?.role == 'student' || user?.role == null;
+
+  AuthState copyWith({
+    bool? isLoading,
+    User? user,
+    String? token,
+    String? error,
+    String? tempEmail,
+    bool? isEmailVerified,
+    bool? isPhoneVerified,
+  }) {
+    return AuthState(
+      isLoading: isLoading ?? this.isLoading,
+      user: user ?? this.user,
+      token: token ?? this.token,
+      error: error,
+      tempEmail: tempEmail ?? this.tempEmail,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
+    );
+  }
+
+  factory AuthState.initial() => AuthState();
+  AuthState asAuthenticated(User user, String token) => AuthState(user: user, token: token);
+  AuthState asLoading() => AuthState(isLoading: true);
+  AuthState asError(String error) => AuthState(error: error);
+}

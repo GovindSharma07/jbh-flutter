@@ -8,6 +8,10 @@ import 'Pages/Authentication/forgot_screen_page.dart';
 import 'Pages/Authentication/register_page.dart';
 import 'Pages/Authentication/reset_password_screen.dart';
 import 'Pages/Authentication/verification Page.dart';
+import 'Pages/admin/admin_dashboard.dart';
+import 'Pages/admin/create_apprenticeship_screen.dart';
+import 'Pages/admin/create_user_screen.dart';
+import 'Pages/admin/manage_users_screen.dart';
 import 'Pages/apprenticeship/apply_apprenticeship_screen.dart';
 import 'Pages/apprenticeship/apprenticeship_detail_screen.dart';
 import 'Pages/apprenticeship/apprenticeships_screen.dart';
@@ -18,6 +22,7 @@ import 'Pages/course/course_selection_screen.dart';
 import 'Pages/demo_class_screen.dart';
 import 'Pages/home_page.dart';
 import 'Pages/live_lecture_screen.dart';
+import 'Pages/manage_resumes_screen.dart';
 import 'Pages/my_courses.dart';
 import 'Pages/notes_screen.dart';
 import 'Pages/payment_option_screen.dart';
@@ -33,14 +38,13 @@ import 'Pages/syllabus_and_module.dart';
 import 'Pages/time_table_screen.dart';
 import 'Pages/weekly_test/weekly_test_result_screen.dart';
 import 'Pages/weekly_test/weekly_test_screeen.dart';
-// ...
+
+
 
 class AppRoutes {
-  // FIX 1: Change login route string
   static const String splash = "/";
   static const String login = '/login';
   static const String register = '/register';
-  // ... keep all other static constants ...
   static const String forgotPassword = '/forgot-password';
   static const String verification = '/verification';
   static const String home = '/home';
@@ -69,6 +73,11 @@ class AppRoutes {
   static const String syllabusModule = "/syllabus-module";
   static const String attendance = "/attendance";
   static const String resetPassword = "/reset-password";
+  static const String manageResumes = '/manage-resumes';
+  static const String adminDashboard = '/admin/dashboard';
+  static const String createJob = '/admin/create-job';
+  static const String manageUsers = '/admin/manage-users';
+  static const String createUser = '/admin/create-user';
 }
 
 Map<String, WidgetBuilder> appRoutes = {
@@ -107,4 +116,9 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.attendance: (context) => const AttendanceScreen(),
   AppRoutes.verification: (context) => const VerificationPage(),
   AppRoutes.resetPassword: (context) => const ResetPasswordScreen(),
+  AppRoutes.manageResumes: (context) => const ManageResumesScreen(),
+  AppRoutes.adminDashboard: (context) => const AdminDashboardScreen(),
+  AppRoutes.createJob: (context) => const CreateApprenticeshipScreen(),
+  AppRoutes.manageUsers: (context) => const ManageUsersScreen(),
+  AppRoutes.createUser: (context) => const CreateUserScreen(),
 };
