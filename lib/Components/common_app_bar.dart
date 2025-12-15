@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../app_routes.dart';
+import '../state/auth_notifier.dart';
 
 AppBar buildAppBar(BuildContext context, {String title = ''}) {
   // Define the primary color, as it's used in multiple places
-   Color primaryColor = Theme.of(context).primaryColor;
+  Color primaryColor = Theme.of(context).primaryColor;
 
   return AppBar(
     // 1. Change background color to white
@@ -21,6 +24,7 @@ AppBar buildAppBar(BuildContext context, {String title = ''}) {
       ),
       onPressed: () {
         // Handle menu tap
+        Scaffold.of(context).openDrawer(); // Ensure this opens the drawer if present
       },
     ),
     // Add the title property
@@ -75,6 +79,43 @@ AppBar buildAppBar(BuildContext context, {String title = ''}) {
           padding: const EdgeInsets.all(8), // Add custom padding
         ),
       ),
+
+      // --- LOGOUT BUTTON START ---
+      Consumer(
+        builder: (context, ref, child) {
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            decoration: const BoxDecoration(
+              color: Colors.redAccent, // Distinct color for logout (optional) or use primaryColor
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.logout,
+                color: Colors.white,
+                size: 20,
+              ),
+              tooltip: 'Logout',
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.all(8),
+              onPressed: () async {
+                // 1. Perform Logout (Clear session & state)
+                await ref.read(authNotifierProvider.notifier).logout();
+
+                // 2. Clear all background screens and navigate to Login
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    AppRoutes.login,
+                        (route) => false, // This condition ensures all previous routes are removed
+                  );
+                }
+              },
+            ),
+          );
+        },
+      ),
+      // --- LOGOUT BUTTON END ---
 
       // Profile picture CircleAvatar remains outside the "clipbar"
       const Padding(

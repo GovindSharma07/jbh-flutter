@@ -8,9 +8,11 @@ import 'Pages/Authentication/forgot_screen_page.dart';
 import 'Pages/Authentication/register_page.dart';
 import 'Pages/Authentication/reset_password_screen.dart';
 import 'Pages/Authentication/verification Page.dart';
+import 'Pages/admin/add_edit_course_screen.dart';
 import 'Pages/admin/admin_dashboard.dart';
 import 'Pages/admin/create_apprenticeship_screen.dart';
 import 'Pages/admin/create_user_screen.dart';
+import 'Pages/admin/manage_courses_screen.dart';
 import 'Pages/admin/manage_users_screen.dart';
 import 'Pages/apprenticeship/apply_apprenticeship_screen.dart';
 import 'Pages/apprenticeship/apprenticeship_detail_screen.dart';
@@ -78,6 +80,8 @@ class AppRoutes {
   static const String createJob = '/admin/create-job';
   static const String manageUsers = '/admin/manage-users';
   static const String createUser = '/admin/create-user';
+  static const String manageCourses = '/admin/manage-courses';
+  static const String addEditCourse = '/admin/add-edit-course';
 }
 
 Map<String, WidgetBuilder> appRoutes = {
@@ -121,4 +125,6 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.createJob: (context) => const CreateApprenticeshipScreen(),
   AppRoutes.manageUsers: (context) => const ManageUsersScreen(),
   AppRoutes.createUser: (context) => const CreateUserScreen(),
+  AppRoutes.manageCourses: (context) => const ManageCoursesScreen(),
+  AppRoutes.addEditCourse: (context) => const AddEditCourseScreen(),
 };

@@ -4,7 +4,7 @@ import 'package:jbh_academy/state/auth_notifier.dart';
 import 'package:jbh_academy/services/secure_storage_service.dart';
 
 // Ensure this IP is correct for your setup (10.92.128.86 for physical device via WiFi)
-const String _baseUrl = 'http://192.168.1.14:3000/api';
+const String _baseUrl = 'http://192.168.1.12:3000/api';
 
 final dioProvider = Provider.family<Dio, Ref>((ref, externalRef) {
   final dio = Dio(BaseOptions(baseUrl: _baseUrl));

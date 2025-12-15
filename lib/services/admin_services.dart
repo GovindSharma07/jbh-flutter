@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/Models/user_model.dart';
 import 'package:jbh_academy/services/api_service.dart';
 
+import '../Models/course_model.dart';
+
 final adminServiceProvider = Provider<AdminService>((ref) {
   final dio = ref.watch(dioProvider(ref));
   return AdminService(dio);
@@ -65,4 +67,51 @@ class AdminService {
       throw e.response?.data['message'] ?? 'Failed to block user';
     }
   }
+
+  Future<List<Course>> getAllCourses() async {
+    try {
+      final response = await _dio.get('/courses');
+      return (response.data as List)
+          .map((e) => Course.fromJson(e))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch courses: $e');
+    }
+  }
+
+  Future<void> createCourse(Course course) async {
+    try {
+      await _dio.post('/courses', data: course.toJson());
+    } catch (e) {
+      throw Exception('Failed to create course: $e');
+    }
+  }
+
+  Future<void> updateCourse(int id, Course course) async {
+    try {
+      await _dio.put('/courses/$id', data: course.toJson());
+    } catch (e) {
+      throw Exception('Failed to update course: $e');
+    }
+  }
+
+  Future<void> deleteCourse(int id) async {
+    try {
+      await _dio.delete('/courses/$id');
+    } catch (e) {
+      throw Exception('Failed to delete course: $e');
+    }
+  }
 }
+
+// Provider
+final adminServicesProvider = Provider<AdminService>((ref) {
+  final dio = ref.watch(dioProvider(ref));
+  return AdminService(dio);
+});
+
+// Future Provider to Fetch Courses easily in the UI
+final allCoursesProvider = FutureProvider.autoDispose<List<Course>>((ref) async {
+  final service = ref.watch(adminServicesProvider);
+  return service.getAllCourses();
+});

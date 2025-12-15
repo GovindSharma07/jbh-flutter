@@ -28,6 +28,7 @@ class AdminDashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- 1. Apprenticeships Section ---
             const Text("Apprenticeships", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             GridView.count(
@@ -53,7 +54,39 @@ class AdminDashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
+
+            // --- 2. NEW: Course Management Section ---
+            const Text("Course Management", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _AdminMenuCard(
+                  icon: Icons.menu_book_rounded,
+                  label: "Manage Courses",
+                  color: Colors.purple, // Distinct color for Courses
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.manageCourses),
+                ),
+                _AdminMenuCard(
+                  icon: Icons.analytics_outlined,
+                  label: "Course Stats",
+                  color: Colors.purple,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Coming Soon: Course Analytics")));
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- 3. User Management Section ---
             const Text("User Management", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             GridView.count(
