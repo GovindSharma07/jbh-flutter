@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../Components/common_app_bar.dart';
 import '../Components/floating_custom_nav_bar.dart';
+import '../app_routes.dart';
 import '../services/course_service.dart';
 
 class MyCoursesScreen extends ConsumerWidget {
@@ -30,10 +31,17 @@ class MyCoursesScreen extends ConsumerWidget {
                 child: ListTile(
                   leading: const Icon(Icons.check_circle, color: Colors.green),
                   title: Text(course.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: course.enrollmentDate != null
+                      ? Text("Enrolled on: ${course.enrollmentDate!.toLocal().toString().split(' ')[0]}")
+                      : null,
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Navigate to Lessons/Syllabus screen (To be built next)
-                    // Navigator.pushNamed(context, AppRoutes.syllabusModule, arguments: course);
+                    // Navigate to Syllabus Screen passing the Course object
+                    Navigator.pushNamed(
+                        context,
+                        AppRoutes.syllabusModule,
+                        arguments: course
+                    );
                   },
                 ),
               );

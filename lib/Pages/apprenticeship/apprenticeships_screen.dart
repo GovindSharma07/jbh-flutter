@@ -48,6 +48,7 @@ class ApprenticeshipsScreen extends ConsumerWidget {
                           'description': item.description,
                           'duration': item.duration,
                           'location': item.location,
+                          'hasApplied': item.hasApplied,
                         },
                       );
                     },

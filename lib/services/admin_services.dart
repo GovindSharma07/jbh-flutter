@@ -12,6 +12,7 @@ final adminServiceProvider = Provider<AdminService>((ref) {
 
 class AdminService {
   final Dio _dio;
+
   AdminService(this._dio);
 
   // --- User Management ---
@@ -37,13 +38,16 @@ class AdminService {
   }) async {
     try {
       // Backend should implement: POST /admin/users
-      await _dio.post('/admin/users', data: {
-        'full_name': fullName,
-        'email': email,
-        'password': password,
-        'phone': phone,
-        'role': role,
-      });
+      await _dio.post(
+        '/admin/users',
+        data: {
+          'full_name': fullName,
+          'email': email,
+          'password': password,
+          'phone': phone,
+          'role': role,
+        },
+      );
     } on DioException catch (e) {
       throw e.response?.data['message'] ?? 'Failed to create user';
     }
@@ -71,9 +75,7 @@ class AdminService {
   Future<List<Course>> getAllCourses() async {
     try {
       final response = await _dio.get('/courses');
-      return (response.data as List)
-          .map((e) => Course.fromJson(e))
-          .toList();
+      return (response.data as List).map((e) => Course.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Failed to fetch courses: $e');
     }
@@ -102,6 +104,53 @@ class AdminService {
       throw Exception('Failed to delete course: $e');
     }
   }
+
+  Future<void> addModule(int courseId, String title) async {
+    try {
+      await _dio.post(
+        '/courses/$courseId/modules',
+        data: {
+          'title': title,
+          'order': 0, // Backend handles order usually, or pass it if needed
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to add module: $e');
+    }
+  }
+
+  // Add a Lesson to a Module
+  Future<void> addLesson({
+    required int moduleId,
+    required String title,
+    required String contentUrl,
+    bool isFree = false,
+  }) async {
+    try {
+      await _dio.post(
+        '/lessons',
+        data: {
+          'moduleId': moduleId,
+          'title': title,
+          'contentUrl': contentUrl,
+          'contentType': 'video', // Defaulting to video for now
+          'isFree': isFree,
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to add lesson: $e');
+    }
+  }
+
+  // Fetch Course Detail (Reuse existing endpoint but strictly for admin viewing)
+  Future<Course> getCourseDetail(int courseId) async {
+    try {
+      final response = await _dio.get('/courses/$courseId');
+      return Course.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Failed to load course detail: $e');
+    }
+  }
 }
 
 // Provider
@@ -111,7 +160,9 @@ final adminServicesProvider = Provider<AdminService>((ref) {
 });
 
 // Future Provider to Fetch Courses easily in the UI
-final allCoursesProvider = FutureProvider.autoDispose<List<Course>>((ref) async {
+final allCoursesProvider = FutureProvider.autoDispose<List<Course>>((
+  ref,
+) async {
   final service = ref.watch(adminServicesProvider);
   return service.getAllCourses();
 });

@@ -72,6 +72,15 @@ class CourseService {
       throw Exception(e.response?.data['message'] ?? 'Enrollment failed');
     }
   }
+  // 4. Fetch Course Detail (with Syllabus)
+  Future<Course> getCourseDetail(int courseId) async {
+    try {
+      final response = await _dio.get('/courses/$courseId');
+      return Course.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Failed to load course details: $e');
+    }
+  }
 }
 
 // --- PROVIDERS ---
@@ -91,4 +100,10 @@ final courseListProvider = FutureProvider.autoDispose<List<Course>>((ref) async 
 final myCoursesProvider = FutureProvider.autoDispose<List<Course>>((ref) async {
   final service = ref.watch(courseServiceProvider);
   return service.getMyCourses();
+});
+
+// Add a new Family Provider to fetch details for a specific course
+final courseDetailProvider = FutureProvider.family.autoDispose<Course, int>((ref, courseId) async {
+  final service = ref.watch(courseServiceProvider);
+  return service.getCourseDetail(courseId);
 });

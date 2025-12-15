@@ -24,7 +24,7 @@ import 'Pages/course/course_selection_screen.dart';
 import 'Pages/demo_class_screen.dart';
 import 'Pages/home_page.dart';
 import 'Pages/live_lecture_screen.dart';
-import 'Pages/manage_resumes_screen.dart';
+import 'Pages/resume/manage_resumes_screen.dart';
 import 'Pages/my_courses.dart';
 import 'Pages/notes_screen.dart';
 import 'Pages/payment_option_screen.dart';

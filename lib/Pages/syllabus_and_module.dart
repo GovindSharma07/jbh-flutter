@@ -1,129 +1,69 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
-
+import 'package:jbh_academy/Models/course_model.dart';
 import '../Components/common_app_bar.dart';
+import '../services/course_service.dart'; // Ensure you have getCourseDetail in CourseService too
 
-class SyllabusModulesScreen extends StatelessWidget {
-  // Define a routeName for main.dart
-  static const String routeName = '/syllabus_modules';
+// You need to duplicate the provider logic or share it.
+// Assuming you added getCourseDetail to CourseService as well:
+final studentCourseDetailProvider = FutureProvider.family.autoDispose<Course, int>((ref, courseId) async {
+  // Use CourseService here, not AdminService
+  return ref.watch(courseServiceProvider).getCourseDetail(courseId);
+});
 
-  const SyllabusModulesScreen({Key? key}) : super(key: key);
+class SyllabusModulesScreen extends ConsumerWidget {
+  const SyllabusModulesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final Color primaryColor = Theme
-        .of(context)
-        .primaryColor;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is! Course || args.courseId == null) {
+      return const Scaffold(body: Center(child: Text("Error: No course data")));
+    }
+
+    final courseId = args.courseId!;
+    final detailAsync = ref.watch(studentCourseDetailProvider(courseId));
 
     return Scaffold(
-      appBar: buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              // Screen Title
-              Text(
-                'Syllabus & Modules',
-                style: Theme
-                    .of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(
-                  fontSize: 22,
-                  color: primaryColor,
-                  fontWeight: FontWeight.bold
-                ),
-              ),
-              const SizedBox(height: 20),
+      appBar: buildAppBar(context, title: args.title),
+      body: detailAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, s) => Center(child: Text("Error: $e")),
+        data: (course) {
+          final modules = course.modules ?? [];
+          if (modules.isEmpty) return const Center(child: Text("No content available yet."));
 
-              // Module Cards
-              _buildModuleCard(
-                context: context,
-                title: 'Python Django',
-                primaryColor: primaryColor,
-              ),
-              const SizedBox(height: 16),
-              _buildModuleCard(
-                context: context,
-                title: 'Cyber Security',
-                primaryColor: primaryColor,
-              ),
-            ],
-          ),
-        ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: modules.length,
+            itemBuilder: (context, index) {
+              final module = modules[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: ExpansionTile(
+                  title: Text(module.title, style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+                  children: module.lessons.map((lesson) {
+                    return ListTile(
+                      leading: Icon(
+                          lesson.contentType == 'pdf' ? Icons.picture_as_pdf : Icons.play_circle_fill,
+                          color: Colors.grey[700]
+                      ),
+                      title: Text(lesson.title),
+                      trailing: lesson.isFree ? const Chip(label: Text("Demo", style: TextStyle(fontSize: 10))) : null,
+                      onTap: () {
+                        // Launch video player logic
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Playing ${lesson.title}")));
+                      },
+                    );
+                  }).toList(),
+                ),
+              );
+            },
+          );
+        },
       ),
       bottomNavigationBar: FloatingCustomNavBar(),
-    );
-  }
-
-  /// Helper widget to build a single module card
-  Widget _buildModuleCard({
-    required BuildContext context,
-    required String title,
-    required Color primaryColor, // Your new parameter
-  }) {
-    return Card(
-      color: Theme
-          .of(context)
-          .cardColor,
-      elevation: 3,
-      shadowColor: Colors.black.withOpacity(0.2),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Module Title
-            Text(
-              title,
-              style: TextStyle(
-                color: primaryColor, // Use the primary color
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // --- Improved "View Syllabus" Button ---
-
-            // 3. ClipRRect ensures the InkWell ripple matches the border
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: InkWell(
-                // 4. Add the onTap functionality
-                onTap: () {
-                  print('View Syllabus for $title');
-                  // Add your navigation logic here
-                },
-                child: Container(
-                  height: 30,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: primaryColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  // 5. Use Center for perfect text alignment
-                  child: const Center(
-                    child: Text(
-                      "View Syllabus",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // --- End of Improved Button ---
-          ],
-        ),
-      ),
     );
   }
 }

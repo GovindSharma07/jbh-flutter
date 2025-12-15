@@ -5,7 +5,6 @@ import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import '../../app_routes.dart';
 
 class ApprenticeshipDetailScreen extends StatelessWidget {
-
   const ApprenticeshipDetailScreen({super.key});
 
   // Helper function to build the detail rows
@@ -31,13 +30,16 @@ class ApprenticeshipDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     final args = ModalRoute.of(context)!.settings.arguments as Map;
+    final int apprenticeshipId = args['id'];
     final String title = args['title'];
     final String imagePath = args['imagePath'];
     final String description = args['description'];
     final String duration = args['duration'];
     final String location = args['location'];
+
+    // 2. Get the Applied Status (Default to false if null)
+    final bool hasApplied = args['hasApplied'] ?? false;
 
     // Define the primary color
     Color primaryColor = Theme.of(context).primaryColor;
@@ -58,8 +60,9 @@ class ApprenticeshipDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- Image ---
-                Image.asset(
-                  imagePath, // Use variable
+                Image.network(
+                  imagePath,
+                  // This contains the URL passed from the previous screen
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -71,7 +74,6 @@ class ApprenticeshipDetailScreen extends StatelessWidget {
                         child: Icon(
                           Icons.image_not_supported,
                           color: Colors.grey[400],
-                          size: 50,
                         ),
                       ),
                     );
@@ -122,29 +124,37 @@ class ApprenticeshipDetailScreen extends StatelessWidget {
 
                       // --- Apply Button ---
                       Center(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Handle Apply Now
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.applyApprenticeship
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: hasApplied
+                                ? null // Disable button (null onPressed)
+                                : () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.applyApprenticeship,
+                                      arguments: {'id': apprenticeshipId, 'title': title},
+                                    );
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              // Change color: Grey if applied, Primary if not
+                              backgroundColor: hasApplied
+                                  ? Colors.grey
+                                  : primaryColor,
+                              disabledBackgroundColor: Colors.grey.withOpacity(
+                                0.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 40,
-                              vertical: 12,
-                            ),
-                          ),
-                          child: const Text(
-                            'Apply Now',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white70,
+                            child: Text(
+                              hasApplied ? 'Already Applied' : 'Apply Now',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),

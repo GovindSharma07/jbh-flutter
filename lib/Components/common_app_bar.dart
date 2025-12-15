@@ -38,47 +38,6 @@ AppBar buildAppBar(BuildContext context, {String title = ''}) {
     centerTitle: true,
 
     actions: [
-      // 4. Wrap each icon in its own separate "clip"
-
-      // Message Icon Clip
-      Container(
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-        decoration: BoxDecoration(
-          color: primaryColor, // Solid primary color
-          shape: BoxShape.circle, // Make it circular
-        ),
-        child: IconButton(
-          icon: Image.asset(
-            'assets/icons/message_icon.png', // <-- Your image path
-            width: 22,
-            height: 22,
-            color: Colors.white, // Color for on-primary background
-          ),
-          onPressed: () {},
-          constraints: const BoxConstraints(), // Remove default padding
-          padding: const EdgeInsets.all(8), // Add custom padding
-        ),
-      ),
-
-      // Notification Icon Clip
-      Container(
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-        decoration: BoxDecoration(
-          color: primaryColor, // Solid primary color
-          shape: BoxShape.circle, // Make it circular
-        ),
-        child: IconButton(
-          icon: Image.asset(
-            'assets/icons/notification_icon.png', // <-- Your image path
-            width: 22,
-            height: 22,
-            color: Colors.white, // Color for on-primary background
-          ),
-          onPressed: () {},
-          constraints: const BoxConstraints(), // Remove default padding
-          padding: const EdgeInsets.all(8), // Add custom padding
-        ),
-      ),
 
       // --- LOGOUT BUTTON START ---
       Consumer(
@@ -117,15 +76,6 @@ AppBar buildAppBar(BuildContext context, {String title = ''}) {
       ),
       // --- LOGOUT BUTTON END ---
 
-      // Profile picture CircleAvatar remains outside the "clipbar"
-      const Padding(
-        padding: EdgeInsets.only(right: 16.0, left: 8.0),
-        child: CircleAvatar(
-          radius: 16,
-          backgroundColor: Colors.grey,
-          // backgroundImage: AssetImage('assets/images/profile_pic.png'),
-        ),
-      ),
     ],
   );
 }
