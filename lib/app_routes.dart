@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 // ... other imports ...
 import 'package:jbh_academy/Pages/Authentication/login_page.dart';
+import 'package:jbh_academy/Pages/admin/manage_syllabus_screen.dart';
 
 import 'Pages/Authentication/auth_guard_screen.dart';
 import 'Pages/Authentication/forgot_screen_page.dart';
@@ -82,6 +83,8 @@ class AppRoutes {
   static const String createUser = '/admin/create-user';
   static const String manageCourses = '/admin/manage-courses';
   static const String addEditCourse = '/admin/add-edit-course';
+  static const String manageSyllabus = '/admin/manage-syllabus';
+
 }
 
 Map<String, WidgetBuilder> appRoutes = {
@@ -127,4 +130,5 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.createUser: (context) => const CreateUserScreen(),
   AppRoutes.manageCourses: (context) => const ManageCoursesScreen(),
   AppRoutes.addEditCourse: (context) => const AddEditCourseScreen(),
+  AppRoutes.manageSyllabus: (context)=> const ManageSyllabusScreen()
 };

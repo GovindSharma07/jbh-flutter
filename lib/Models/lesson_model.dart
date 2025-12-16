@@ -5,6 +5,7 @@ class Lesson {
   final String contentType;
   final bool isFree;
   final int? duration;
+  final int lessonOrder;
 
   Lesson({
     required this.lessonId,
@@ -13,6 +14,7 @@ class Lesson {
     required this.contentType,
     required this.isFree,
     this.duration,
+    this.lessonOrder =0
   });
 
   factory Lesson.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class Lesson {
       contentType: json['content_type'] ?? 'video',
       isFree: json['is_free'] ?? false,
       duration: json['duration'],
+      lessonOrder: json['lesson_order'] ?? 0,
     );
   }
 }

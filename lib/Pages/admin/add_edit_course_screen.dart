@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart'; // 1. Import File Picker
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../Components/common_app_bar.dart';
@@ -14,20 +17,21 @@ class AddEditCourseScreen extends ConsumerStatefulWidget {
 class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
-  final _urlController = TextEditingController();
 
   bool _isEditing = false;
   int? _courseId;
   bool _isLoading = false;
 
+  // 2. State for File Picker
+  PlatformFile? _pickedFile;
+  String? _existingImageUrl;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Check if arguments exist (Editing Mode)
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Course && !_isEditing) {
       _isEditing = true;
@@ -35,22 +39,54 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
       _titleController.text = args.title;
       _descController.text = args.description ?? '';
       _priceController.text = args.price.toString();
-      _urlController.text = args.thumbnailUrl ?? '';
+      _existingImageUrl = args.thumbnailUrl;
+    }
+  }
+
+  // 3. Pick Image Function
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image, // Restrict to images
+        withData: true, // Important for Web to get bytes
+      );
+
+      if (result != null) {
+        setState(() {
+          _pickedFile = result.files.first;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error picking file: $e")));
     }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_pickedFile == null && _existingImageUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a thumbnail image")),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
+      String? finalImageUrl = _existingImageUrl;
+
+      // 4. Upload if new file selected
+      if (_pickedFile != null) {
+        finalImageUrl = await ref.read(adminServicesProvider).uploadCourseImage(_pickedFile!);
+      }
+
       final course = Course(
         courseId: _courseId,
         title: _titleController.text,
         description: _descController.text,
         price: double.tryParse(_priceController.text) ?? 0.0,
-        thumbnailUrl: _urlController.text,
+        thumbnailUrl: finalImageUrl,
       );
 
       if (_isEditing) {
@@ -61,10 +97,8 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
         if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Course Created!")));
       }
 
-      // Refresh the list on the previous screen
       ref.refresh(allCoursesProvider);
-
-      if(mounted) Navigator.pop(context); // Go back
+      if(mounted) Navigator.pop(context);
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
@@ -83,7 +117,34 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 5. Image Preview UI
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[400]!),
+                    ),
+                    // Helper method to decide what image source to show
+                    child: _buildImagePreview(),
+                  ),
+                ),
+                if (_pickedFile != null || _existingImageUrl != null)
+                  Center(
+                      child: TextButton.icon(
+                          onPressed: _pickImage,
+                          icon: const Icon(Icons.edit),
+                          label: const Text("Change Thumbnail")
+                      )
+                  ),
+
+                const SizedBox(height: 20),
+                // Form Fields
                 TextFormField(
                   controller: _titleController,
                   decoration: const InputDecoration(labelText: 'Course Title', border: OutlineInputBorder()),
@@ -102,11 +163,7 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
                   decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
                   maxLines: 3,
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _urlController,
-                  decoration: const InputDecoration(labelText: 'Thumbnail URL', border: OutlineInputBorder()),
-                ),
+
                 const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
@@ -128,5 +185,49 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
         ),
       ),
     );
+  }
+
+  // 6. Helper Widget to Render Preview
+  Widget _buildImagePreview() {
+    // A. If user picked a file
+    if (_pickedFile != null) {
+      if (kIsWeb) {
+        // Web: Show from bytes
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(_pickedFile!.bytes!, fit: BoxFit.cover),
+        );
+      } else {
+        // Mobile: Show from path
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(File(_pickedFile!.path!), fit: BoxFit.cover),
+        );
+      }
+    }
+
+    // B. If editing and has existing URL
+    else if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          _existingImageUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => const Center(child: Icon(Icons.error, color: Colors.red)),
+        ),
+      );
+    }
+
+    // C. Default Placeholder
+    else {
+      return const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+          SizedBox(height: 8),
+          Text("Tap to add Thumbnail", style: TextStyle(color: Colors.grey)),
+        ],
+      );
+    }
   }
 }

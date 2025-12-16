@@ -50,12 +50,24 @@ class ManageCoursesScreen extends ConsumerWidget {
                     children: [
                       // Edit Button
                       IconButton(
+                        tooltip: 'Manage Syllabus',
+                        icon: const Icon(Icons.library_books, color: Colors.green),
+                        onPressed: () {
+                          // Navigate to ManageSyllabusScreen passing the Course object
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.manageSyllabus, // Ensure this route is defined in app_routes.dart
+                            arguments: course,
+                          );
+                        },
+                      ),
+                      IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () {
                           Navigator.pushNamed(
                             context,
                             AppRoutes.addEditCourse,
-                            arguments: course, // Pass existing course to edit
+                            arguments: course,
                           );
                         },
                       ),
