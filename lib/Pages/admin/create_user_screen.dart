@@ -162,7 +162,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
 
     try {
       await ref
-          .read(adminServiceProvider)
+          .read(adminServicesProvider)
           .createUser(
             fullName: _nameCtrl.text,
             email: _emailCtrl.text,

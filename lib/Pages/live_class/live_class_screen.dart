@@ -108,17 +108,12 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
             child: _participants.isEmpty
                 // If alone, just show self
                 ? Center(
-                    child: _room!.localParticipant != null
-                        ? SizedBox(
+                    child: SizedBox(
                             width: 300,
                             height: 400,
                             child: ParticipantTile(
-                              participant: _room!.localParticipant!,
+                              participant: _room!.localParticipant,
                             ),
-                          )
-                        : const Text(
-                            "Waiting...",
-                            style: TextStyle(color: Colors.white),
                           ),
                   )
                 : GridView.builder(
@@ -135,7 +130,7 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
                     itemBuilder: (context, index) {
                       if (index == 0) {
                         return ParticipantTile(
-                          participant: _room!.localParticipant!,
+                          participant: _room!.localParticipant,
                         );
                       }
                       var pId = _participants.keys.elementAt(index - 1);
@@ -212,7 +207,7 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
   bool get _isMicOn {
     if (_room?.localParticipant == null) return false;
     // Check if any audio stream exists in the streams map
-    return _room!.localParticipant!.streams.values.any(
+    return _room!.localParticipant.streams.values.any(
       (stream) => stream.kind == 'audio',
     );
   }
@@ -221,7 +216,7 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
   bool get _isCamOn {
     if (_room?.localParticipant == null) return false;
     // Check if any video stream exists in the streams map
-    return _room!.localParticipant!.streams.values.any(
+    return _room!.localParticipant.streams.values.any(
       (stream) => stream.kind == 'video',
     );
   }

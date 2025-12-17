@@ -11,6 +11,7 @@ import 'Pages/Authentication/reset_password_screen.dart';
 import 'Pages/Authentication/verification Page.dart';
 import 'Pages/admin/add_edit_course_screen.dart';
 import 'Pages/admin/admin_dashboard.dart';
+import 'Pages/admin/assign_schedule_screen.dart';
 import 'Pages/admin/create_apprenticeship_screen.dart';
 import 'Pages/admin/create_user_screen.dart';
 import 'Pages/admin/manage_courses_screen.dart';
@@ -34,7 +35,6 @@ import 'Pages/payment_option_screen.dart';
 import 'Pages/placeholderscreen.dart';
 import 'Pages/quizzes_result_screen.dart';
 import 'Pages/quizzes_screen.dart';
-import 'Pages/recorded_lecture_screen.dart';
 import 'Pages/scholarship/scholarship_apply.dart';
 import 'Pages/scholarship/scholarship_result_screen.dart';
 import 'Pages/scholarship/scholarship_screen.dart';
@@ -57,7 +57,6 @@ class AppRoutes {
   static const String courseDetail = '/course-detail';
   static const String liveLectures = '/live-lectures';
   static const String timeTable = '/time-table';
-  static const String recordedLectures = '/recorded-lectures';
   static const String pdfNotes = '/pdf-notes';
   static const String demoClass = '/demo-class';
   static const String weeklyTest = '/weekly-test';
@@ -89,6 +88,8 @@ class AppRoutes {
   static const String instructorDashboard = '/instructor/dashboard';
   static const String liveClass = '/live-class';
 
+  static const String assignSchedule = "/admin/assign-schedule";
+
 }
 
 Map<String, WidgetBuilder> appRoutes = {
@@ -105,7 +106,6 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.courseDetail: (context) => const CourseDetailScreen(),
   AppRoutes.liveLectures: (context) => const LecturesScreen(),
   AppRoutes.timeTable: (context) => const TimeTableScreen(),
-  AppRoutes.recordedLectures: (context) => const RecordedLecturesScreen(),
   AppRoutes.pdfNotes: (context) => const NotesScreen(),
   AppRoutes.demoClass: (context) => const DemoClassScreen(),
   AppRoutes.weeklyTest: (context) => const WeeklyTestScreen(),
@@ -137,6 +137,7 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.manageSyllabus: (context)=> const ManageSyllabusScreen(),
   AppRoutes.instructorDashboard: (context) => const InstructorDashboard(),
   AppRoutes.liveClass: (context) => const _LiveClassWrapper(), // Wrapper to handle arguments
+  AppRoutes.assignSchedule: (context) => const AssignScheduleScreen(),
 };
 
 

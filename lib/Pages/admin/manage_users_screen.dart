@@ -7,7 +7,7 @@ import '../../services/admin_services.dart';
 
 // Provider to fetch users
 final userListProvider = FutureProvider.autoDispose<List<User>>((ref) async {
-  return ref.watch(adminServiceProvider).getAllUsers();
+  return ref.watch(adminServicesProvider).getAllUsers();
 });
 
 class ManageUsersScreen extends ConsumerWidget {
@@ -41,7 +41,7 @@ class ManageUsersScreen extends ConsumerWidget {
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  title: Text(user.fullName ?? "Unknown", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -107,7 +107,7 @@ class ManageUsersScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ref.read(adminServiceProvider).deleteUser(user.userId);
+                await ref.read(adminServicesProvider).deleteUser(user.userId);
                 ref.invalidate(userListProvider); // Refresh List
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

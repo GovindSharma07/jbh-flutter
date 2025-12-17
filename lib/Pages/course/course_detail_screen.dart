@@ -83,7 +83,9 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       final userEmail = user?.email ?? '';
       final userPhone = user?.phone ?? '';
 
-      final data = await ref.read(courseServiceProvider).createPaymentOrder(course.courseId!);
+      final data = await ref
+          .read(courseServiceProvider)
+          .createPaymentOrder(course.courseId!);
       final String keyId = data['keyId'];
       final Map<String, dynamic> order = data['order'];
 
@@ -96,7 +98,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
         'description': course.title,
         'order_id': order['id'],
         'prefill': {
-          'contact':userPhone , // TODO: Fetch real user phone
+          'contact': userPhone, // TODO: Fetch real user phone
           'email': userEmail, // TODO: Fetch real user email
         },
         'theme': {'color': '#FF0000'},
@@ -138,13 +140,15 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                 borderRadius: BorderRadius.circular(8),
                 image: course.thumbnailUrl != null
                     ? DecorationImage(
-                  image: NetworkImage(course.thumbnailUrl!),
-                  fit: BoxFit.cover,
-                )
+                        image: NetworkImage(course.thumbnailUrl!),
+                        fit: BoxFit.cover,
+                      )
                     : null,
               ),
               child: course.thumbnailUrl == null
-                  ? const Center(child: Icon(Icons.image, size: 50, color: Colors.grey))
+                  ? const Center(
+                      child: Icon(Icons.image, size: 50, color: Colors.grey),
+                    )
                   : null,
             ),
             const SizedBox(height: 20),
@@ -215,30 +219,37 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   // Turn GREEN if enrolled, else Primary Color
-                  backgroundColor: isEnrolled ? Colors.green : Theme.of(context).primaryColor,
+                  backgroundColor: isEnrolled
+                      ? Colors.green
+                      : Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   elevation: 2,
                 ),
                 onPressed: () async {
                   if (isEnrolled) {
-                    // FLOW A: Already Enrolled -> Go to Content
+                    // DIRECT STUDENT TO THE DYNAMIC SYLLABUS
                     Navigator.pushNamed(
                       context,
                       AppRoutes.syllabusModule,
+                      // This screen now holds everything
                       arguments: SyllabusScreenArgs(
                         courseId: course.courseId!,
                         title: course.title,
-                        isEnrolled: true, // <--- Unlocks content
+                        isEnrolled: true,
                       ),
                     );
                   } else {
                     // FLOW B: Not Enrolled -> Buy or Free Enroll
                     if (course.price == 0) {
                       try {
-                        await ref.read(courseServiceProvider).enrollFree(course.courseId!);
+                        await ref
+                            .read(courseServiceProvider)
+                            .enrollFree(course.courseId!);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Enrolled Successfully!")),
+                            const SnackBar(
+                              content: Text("Enrolled Successfully!"),
+                            ),
                           );
                           ref.invalidate(myCoursesProvider);
                           // Refresh UI to show "Start Learning"
@@ -255,8 +266,13 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                 child: Text(
                   isEnrolled
                       ? "Start Learning"
-                      : (course.price == 0 ? "Enroll for Free" : "Pay ₹${course.price} & Enroll"),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      : (course.price == 0
+                            ? "Enroll for Free"
+                            : "Pay ₹${course.price} & Enroll"),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

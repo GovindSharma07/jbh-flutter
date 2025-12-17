@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_routes.dart';
 import '../../services/instructor_service.dart';
 
-// 1. Change StatefulWidget -> ConsumerStatefulWidget
 class InstructorDashboard extends ConsumerStatefulWidget {
   const InstructorDashboard({super.key});
 
@@ -19,40 +18,40 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
   @override
   void initState() {
     super.initState();
-    // We can call the API immediately
     _fetchSchedule();
   }
 
   Future<void> _fetchSchedule() async {
     try {
-      // 2. Use ref.read to get the service
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // 1. Use ref.read to get the updated service
       final service = ref.read(instructorServiceProvider);
-      final response = await service.getInstructorSchedule();
+
+      // Service now returns List<dynamic> directly (or throws error)
+      final scheduleData = await service.getInstructorSchedule();
 
       if (mounted) {
-        if (response['success'] == true) {
-          setState(() {
-            _schedule = response['schedule'];
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _errorMessage = "Failed to load schedule.";
-            _isLoading = false;
-          });
-        }
+        setState(() {
+          _schedule = scheduleData;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = e.toString().replaceAll("Exception: ", "");
           _isLoading = false;
         });
       }
     }
   }
 
-  Future<void> _handleGoLive(String scheduleId, String defaultTopic) async {
+  // Changed scheduleId to int to match backend schema
+  Future<void> _handleGoLive(int scheduleId, String defaultTopic) async {
     final TextEditingController topicController = TextEditingController(text: defaultTopic);
 
     await showDialog(
@@ -91,7 +90,8 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
     );
   }
 
-  Future<void> _startClassApi(String scheduleId, String topic) async {
+  Future<void> _startClassApi(int scheduleId, String topic) async {
+    // Show loading
     showDialog(
         context: context,
         barrierDismissible: false,
@@ -99,8 +99,9 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
     );
 
     try {
-      // 3. Use ref.read to get the service
       final service = ref.read(instructorServiceProvider);
+
+      // 2. Call startLiveClass with named parameters (int scheduleId)
       final response = await service.startLiveClass(
           scheduleId: scheduleId,
           topic: topic
@@ -109,14 +110,14 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
       if (!mounted) return;
       Navigator.pop(context); // Dismiss loading
 
-      // NEW CODE (Centralized Route)
+      // 3. Navigate on success
       if (response['success'] == true) {
         final roomId = response['roomId'];
         final token = response['token'];
+        // You can also get 'liveLectureId' if needed for other logic
 
         if (!mounted) return;
 
-        // Navigate using the route name and pass the arguments object
         Navigator.pushNamed(
           context,
           AppRoutes.liveClass,
@@ -124,15 +125,19 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
             roomId: roomId,
             token: token,
             isInstructor: true,
-            displayName: "Instructor", // You can replace this with the real user name later
+            displayName: "Instructor", // Replace with actual user name if available in state
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pop(context); // Dismiss loading
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Error: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red
+        ),
       );
     }
   }
@@ -144,7 +149,19 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _fetchSchedule,
+              child: const Text("Retry"),
+            )
+          ],
+        ),
+      )
           : _schedule.isEmpty
           ? const Center(child: Text("No classes scheduled for today!"))
           : RefreshIndicator(
@@ -154,14 +171,20 @@ class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
           itemCount: _schedule.length,
           itemBuilder: (context, index) {
             final slot = _schedule[index];
-            // Access data safely
+
             final courseData = slot['course'] ?? {};
             final moduleData = slot['module'] ?? {};
 
             final courseTitle = courseData['title'] ?? 'Unknown Course';
             final subject = moduleData['title'] ?? 'General Session';
-            final time = "${slot['start_time']} - ${slot['end_time']}";
-            final scheduleId = slot['schedule_id'].toString();
+
+            // Helper to safely get start/end times
+            final startTime = slot['start_time'] ?? '??';
+            final endTime = slot['end_time'] ?? '??';
+            final time = "$startTime - $endTime";
+
+            // 4. Safely parse scheduleId as int
+            final scheduleId = slot['schedule_id'] as int;
 
             return Card(
               elevation: 3,

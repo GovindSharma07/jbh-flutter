@@ -123,11 +123,10 @@ class HomeScreen extends StatelessWidget {
       "Syllabus/ Modules",
       "PDF Notes",
       "Demo Class",
-      "Recorded Lectures",
       "Assignments",
       "Attendance",
       "Quizzes",
-      "Manage Resumes"
+      "Manage Resumes",
     ];
 
     return GridView.builder(
@@ -148,9 +147,6 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _onGridItemTapped(BuildContext context, String text) {
-    // You can implement custom logic or navigation for each item here
-    print("Tapped on: $text");
-
     // Example of how to handle different actions using a switch:
     switch (text) {
       case "Course selection":
@@ -183,9 +179,6 @@ class HomeScreen extends StatelessWidget {
       case "Demo Class":
         Navigator.pushNamed(context, AppRoutes.demoClass);
         break;
-      case "Recorded Lectures":
-        Navigator.pushNamed(context, AppRoutes.recordedLectures);
-        break;
       case "Assignments":
         Navigator.pushNamed(context, AppRoutes.assignments);
         break;
@@ -198,9 +191,6 @@ class HomeScreen extends StatelessWidget {
       case "Manage Resumes":
         Navigator.pushNamed(context, AppRoutes.manageResumes);
         break;
-      default:
-        // Default action
-        print("No specific action for $text");
     }
   }
 }

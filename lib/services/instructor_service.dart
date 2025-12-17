@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'api_service.dart'; // Import to access dioProvider
+import 'api_service.dart';
 
 class InstructorService {
   final Dio _dio;
@@ -8,19 +8,19 @@ class InstructorService {
   InstructorService(this._dio);
 
   // 1. Get the Instructor's Schedule
-  Future<Map<String, dynamic>> getInstructorSchedule() async {
+  Future<List<dynamic>> getInstructorSchedule() async {
     try {
-      // No need for baseUrl or headers - Dio handles them!
       final response = await _dio.get('/lms/instructor/schedule');
-      return response.data;
+      return response.data['schedule'];
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Failed to load schedule');
     }
   }
 
   // 2. Start a Live Class
+  // This triggers the backend to create the 'live_lectures' entry in DB
   Future<Map<String, dynamic>> startLiveClass({
-    required String scheduleId,
+    required int scheduleId, // Changed to int to match backend expectation
     required String topic,
   }) async {
     try {
@@ -31,6 +31,7 @@ class InstructorService {
           'topic': topic,
         },
       );
+      // Returns: { success: true, roomId, token, liveLectureId }
       return response.data;
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Failed to start class');
@@ -38,10 +39,8 @@ class InstructorService {
   }
 }
 
-// --- PROVIDER DEFINITION ---
-// This allows the UI to ask for "instructorServiceProvider" and get an instance with Dio ready.
+// --- PROVIDER ---
 final instructorServiceProvider = Provider<InstructorService>((ref) {
-  // We pass 'ref' to dioProvider because it is defined as a .family provider in your api_service.dart
   final dio = ref.watch(dioProvider(ref));
   return InstructorService(dio);
 });

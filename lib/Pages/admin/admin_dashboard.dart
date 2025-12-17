@@ -10,7 +10,10 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Admin Dashboard", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          "Admin Dashboard",
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.red[800],
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
@@ -18,7 +21,11 @@ class AdminDashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.logout),
             onPressed: () {
               ref.read(authNotifierProvider.notifier).logout();
-              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (r) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.login,
+                (r) => false,
+              );
             },
           ),
         ],
@@ -29,7 +36,10 @@ class AdminDashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- 1. Apprenticeships Section ---
-            const Text("Apprenticeships", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Apprenticeships",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             GridView.count(
               shrinkWrap: true,
@@ -42,14 +52,19 @@ class AdminDashboardScreen extends ConsumerWidget {
                   icon: Icons.work,
                   label: "Post New Job",
                   color: Colors.blue,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.createJob),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.createJob),
                 ),
                 _AdminMenuCard(
                   icon: Icons.assignment,
                   label: "View Applications",
                   color: Colors.blue,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Coming Soon: Application List")));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Coming Soon: Application List"),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -58,7 +73,10 @@ class AdminDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // --- 2. NEW: Course Management Section ---
-            const Text("Course Management", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Course Management",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             GridView.count(
               shrinkWrap: true,
@@ -71,14 +89,56 @@ class AdminDashboardScreen extends ConsumerWidget {
                   icon: Icons.menu_book_rounded,
                   label: "Manage Courses",
                   color: Colors.purple, // Distinct color for Courses
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.manageCourses),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.manageCourses),
                 ),
                 _AdminMenuCard(
                   icon: Icons.analytics_outlined,
                   label: "Course Stats",
                   color: Colors.purple,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Coming Soon: Course Analytics")));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Coming Soon: Course Analytics"),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- 3. NEW: Timetable / Live Classes Section ---
+            const Text(
+              "Live Classes & Schedule",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _AdminMenuCard(
+                  icon: Icons.calendar_month,
+                  label: "Assign Schedule",
+                  color: Colors.teal,
+                  // Ensure 'assignSchedule' is defined in your AppRoutes
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.assignSchedule),
+                ),
+                _AdminMenuCard(
+                  icon: Icons.history,
+                  label: "View Time Table",
+                  color: Colors.teal,
+                  onTap: () {
+                    // Placeholder for a screen to view/delete slots
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Feature coming soon")),
+                    );
                   },
                 ),
               ],
@@ -87,7 +147,10 @@ class AdminDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // --- 3. User Management Section ---
-            const Text("User Management", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "User Management",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             GridView.count(
               shrinkWrap: true,
@@ -100,13 +163,15 @@ class AdminDashboardScreen extends ConsumerWidget {
                   icon: Icons.people_alt,
                   label: "Manage Users",
                   color: Colors.orange,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.manageUsers),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.manageUsers),
                 ),
                 _AdminMenuCard(
                   icon: Icons.person_add,
                   label: "Create Admin/Instructor",
                   color: Colors.orange,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.createUser),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.createUser),
                 ),
               ],
             ),
@@ -142,7 +207,7 @@ class _AdminMenuCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
-              backgroundColor: color.withOpacity(0.1),
+              backgroundColor: color.withValues(alpha: 0.1),
               radius: 30,
               child: Icon(icon, size: 30, color: color),
             ),
