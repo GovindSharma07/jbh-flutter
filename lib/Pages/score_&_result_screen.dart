@@ -5,7 +5,7 @@ import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import '../app_routes.dart';
 
 class ScoreResultsScreen extends StatelessWidget {
-  const ScoreResultsScreen({Key? key}) : super(key: key);
+  const ScoreResultsScreen({super.key});
 
   // Helper function to build the styled buttons
   Widget _buildResultButton({

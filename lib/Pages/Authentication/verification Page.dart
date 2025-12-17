@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/Components/resend_timer.dart';
 
-import '../../Models/user_model.dart';
 import '../../app_routes.dart';
 import '../../state/auth_notifier.dart';
 
@@ -95,7 +94,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
           const SnackBar(content: Text('Verification successful. Please log in.'), backgroundColor: Colors.green),
         );
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
-      } else if (next.error != null && (previous == null || next.error != previous?.error)) {
+      } else if (next.error != null && (previous == null || next.error != previous.error)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );

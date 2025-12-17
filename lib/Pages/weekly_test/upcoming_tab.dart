@@ -3,7 +3,7 @@ import 'package:jbh_academy/Pages/weekly_test/test_card.dart';
 
 class UpcomingTab extends StatelessWidget {
   final Color primaryColor;
-  const UpcomingTab({Key? key, required this.primaryColor}) : super(key: key);
+  const UpcomingTab({super.key, required this.primaryColor});
 
   @override
   Widget build(BuildContext context) {

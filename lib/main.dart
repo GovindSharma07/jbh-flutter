@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jbh_academy/state/auth_notifier.dart';
 import 'package:jbh_academy/theme.dart';
 import 'package:jbh_academy/util.dart';
 

@@ -24,6 +24,8 @@ import 'Pages/course/course_detail_screen.dart';
 import 'Pages/course/course_selection_screen.dart';
 import 'Pages/demo_class_screen.dart';
 import 'Pages/home_page.dart';
+import 'Pages/instructor/instructor_dashboard.dart';
+import 'Pages/live_class/live_class_screen.dart';
 import 'Pages/live_lecture_screen.dart';
 import 'Pages/resume/manage_resumes_screen.dart';
 import 'Pages/my_courses.dart';
@@ -84,6 +86,8 @@ class AppRoutes {
   static const String manageCourses = '/admin/manage-courses';
   static const String addEditCourse = '/admin/add-edit-course';
   static const String manageSyllabus = '/admin/manage-syllabus';
+  static const String instructorDashboard = '/instructor/dashboard';
+  static const String liveClass = '/live-class';
 
 }
 
@@ -130,5 +134,47 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.createUser: (context) => const CreateUserScreen(),
   AppRoutes.manageCourses: (context) => const ManageCoursesScreen(),
   AppRoutes.addEditCourse: (context) => const AddEditCourseScreen(),
-  AppRoutes.manageSyllabus: (context)=> const ManageSyllabusScreen()
+  AppRoutes.manageSyllabus: (context)=> const ManageSyllabusScreen(),
+  AppRoutes.instructorDashboard: (context) => const InstructorDashboard(),
+  AppRoutes.liveClass: (context) => const _LiveClassWrapper(), // Wrapper to handle arguments
 };
+
+
+// ==========================================================
+//                 HELPER CLASSES & WIDGETS
+//           (Place these at the bottom of the file)
+// ==========================================================
+
+// 1. Argument Class (Defines what data must be passed)
+class LiveClassArgs {
+  final String roomId;
+  final String token;
+  final bool isInstructor;
+  final String displayName;
+
+  LiveClassArgs({
+    required this.roomId,
+    required this.token,
+    required this.isInstructor,
+    required this.displayName,
+  });
+}
+
+// 2. Wrapper Widget (Extracts arguments and builds the screen)
+// The underscore (_) makes it private, so only this file can see it.
+class _LiveClassWrapper extends StatelessWidget {
+  const _LiveClassWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    // Extract arguments safely
+    final args = ModalRoute.of(context)!.settings.arguments as LiveClassArgs;
+
+    return LiveClassScreen(
+      roomId: args.roomId,
+      token: args.token,
+      isInstructor: args.isInstructor,
+      displayName: args.displayName,
+    );
+  }
+}

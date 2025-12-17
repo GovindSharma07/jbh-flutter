@@ -5,7 +5,7 @@ import '../Components/common_app_bar.dart';
 import '../Components/time_table_card.dart';
 
 class TimeTableScreen extends StatelessWidget {
-  const TimeTableScreen({Key? key}) : super(key: key);
+  const TimeTableScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

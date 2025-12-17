@@ -9,13 +9,13 @@ class ResultCard extends StatelessWidget {
   final Color cardBackgroundColor;
 
   const ResultCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.score,
     required this.performance,
     required this.percentage,
     required this.cardBackgroundColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

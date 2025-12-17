@@ -4,7 +4,7 @@ import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import 'package:jbh_academy/app_routes.dart';
 
 class UpcomingScholarshipScreen extends StatefulWidget {
-  const UpcomingScholarshipScreen({Key? key}) : super(key: key);
+  const UpcomingScholarshipScreen({super.key});
 
   @override
   State<UpcomingScholarshipScreen> createState() =>
@@ -154,13 +154,13 @@ class _ScholarshipCard extends StatelessWidget {
   final VoidCallback onApply;
 
   const _ScholarshipCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.applyDate,
     required this.date,
     required this.primaryColor,
     required this.onApply,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

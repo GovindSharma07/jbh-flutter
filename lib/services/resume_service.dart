@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jbh_academy/Models/apprenticeship_model.dart'; // For Resume model
+// For Resume model
 import 'package:jbh_academy/services/api_service.dart';
 import 'package:mime/mime.dart';
 

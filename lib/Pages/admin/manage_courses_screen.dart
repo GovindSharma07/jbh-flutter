@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../Components/common_app_bar.dart';
-import '../../Models/course_model.dart'; // Ensure Course model has isPublished
+// Ensure Course model has isPublished
 import '../../app_routes.dart';
 import '../../services/admin_services.dart'; // Ensure this has toggleCoursePublishStatus
 

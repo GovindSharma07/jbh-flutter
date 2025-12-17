@@ -10,14 +10,14 @@ class TestCard extends StatelessWidget {
   final Color primaryColor;
 
   const TestCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.imagePath,
     required this.details,
     this.action,
     this.isLive = false,
     required this.primaryColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
