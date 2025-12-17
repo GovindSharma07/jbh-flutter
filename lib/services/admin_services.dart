@@ -131,11 +131,14 @@ class AdminService {
       final contentType = 'image/$extension';
 
       // 1. Get Presigned URL from Backend
-      final response = await _dio.post('/admin/upload-url', data: {
-        'fileName': fileName,
-        'fileType': contentType,
-        'folder': 'courses',
-      });
+      final response = await _dio.post(
+        '/admin/upload-url',
+        data: {
+          'fileName': fileName,
+          'fileType': contentType,
+          'folder': 'courses',
+        },
+      );
 
       final uploadUrl = response.data['uploadUrl'];
       final publicUrl = response.data['publicUrl'];
@@ -150,10 +153,7 @@ class AdminService {
           uploadUrl,
           data: file.bytes, // Uint8List directly
           options: Options(
-            headers: {
-              'Content-Type': contentType,
-              'Content-Length': file.size,
-            },
+            headers: {'Content-Type': contentType, 'Content-Length': file.size},
           ),
         );
       } else {
@@ -179,9 +179,9 @@ class AdminService {
 
   // NEW: Upload Lesson Content (Video/PDF) with Progress
   Future<String> uploadLessonContent(
-      PlatformFile file, {
-        required Function(double progress) onProgress,
-      }) async {
+    PlatformFile file, {
+    required Function(double progress) onProgress,
+  }) async {
     try {
       final fileName = file.name;
       final extension = file.extension ?? 'mp4'; // Fallback
@@ -195,11 +195,14 @@ class AdminService {
       }
 
       // 1. Get Presigned URL for 'lessons' folder
-      final response = await _dio.post('/admin/upload-url', data: {
-        'fileName': fileName,
-        'fileType': contentType,
-        'folder': 'lessons', // Organize content here
-      });
+      final response = await _dio.post(
+        '/admin/upload-url',
+        data: {
+          'fileName': fileName,
+          'fileType': contentType,
+          'folder': 'lessons', // Organize content here
+        },
+      );
 
       final uploadUrl = response.data['uploadUrl'];
       final publicUrl = response.data['publicUrl'];
@@ -214,10 +217,7 @@ class AdminService {
         uploadUrl,
         data: data,
         options: Options(
-          headers: {
-            'Content-Type': contentType,
-            'Content-Length': length,
-          },
+          headers: {'Content-Type': contentType, 'Content-Length': length},
         ),
         onSendProgress: (sent, total) {
           // Calculate percentage (0.0 to 1.0)
@@ -284,20 +284,44 @@ class AdminService {
   }
 
   // NEW: Reorder Modules
-  Future<void> reorderModules(int courseId, List<Map<String, dynamic>> updates) async {
+  Future<void> reorderModules(
+    int courseId,
+    List<Map<String, dynamic>> updates,
+  ) async {
     try {
-      await _dio.put('/courses/$courseId/modules/reorder', data: {'updates': updates});
+      await _dio.put(
+        '/courses/$courseId/modules/reorder',
+        data: {'updates': updates},
+      );
     } catch (e) {
       throw Exception('Failed to reorder modules: $e');
     }
   }
 
   // NEW: Reorder Lessons
-  Future<void> reorderLessons(int moduleId, List<Map<String, dynamic>> updates) async {
+  Future<void> reorderLessons(
+    int moduleId,
+    List<Map<String, dynamic>> updates,
+  ) async {
     try {
-      await _dio.put('/modules/$moduleId/lessons/reorder', data: {'updates': updates});
+      await _dio.put(
+        '/modules/$moduleId/lessons/reorder',
+        data: {'updates': updates},
+      );
     } catch (e) {
       throw Exception('Failed to reorder lessons: $e');
+    }
+  }
+
+  Future<void> toggleCoursePublishStatus(int courseId, bool isPublished) async {
+    try {
+      // Calls the new PATCH route we created in Step 1
+      await _dio.patch(
+        '/courses/$courseId/publish',
+        data: {'is_published': isPublished},
+      );
+    } catch (e) {
+      throw Exception('Failed to update publish status: $e');
     }
   }
 }

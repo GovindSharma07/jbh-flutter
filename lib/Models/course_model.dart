@@ -6,6 +6,7 @@ class Course {
   final String? description;
   final String? thumbnailUrl;
   final double price;
+  final bool isPublished;
 
   // New Fields for Enrollment Status
   final String? status;
@@ -20,6 +21,7 @@ class Course {
     this.description,
     this.thumbnailUrl,
     required this.price,
+    this.isPublished = false,
     this.status,
     this.enrollmentDate,
     this.modules,
@@ -33,6 +35,7 @@ class Course {
       thumbnailUrl: json['thumbnail_url'],
       // Handle numeric conversion safely
       price: json['price'] != null ? double.parse(json['price'].toString()) : 0.0,
+      isPublished: json['is_published'] ?? false,
 
       // Map flattened enrollment fields
       status: json['status'],
@@ -53,6 +56,7 @@ class Course {
       'description': description,
       'thumbnail_url': thumbnailUrl,
       'price': price,
+      'is_published': isPublished,
     };
   }
 }

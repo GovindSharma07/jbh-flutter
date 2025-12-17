@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart'; // <--- Import
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+
 import '../../Components/common_app_bar.dart';
 import '../../Models/course_model.dart';
+import '../../app_routes.dart'; // Ensure AppRoutes is imported
 import '../../services/course_service.dart';
+import '../../state/auth_notifier.dart';
+import '../syllabus_and_module.dart'; // Import this to use SyllabusScreenArgs
 
-// Change to ConsumerStatefulWidget to handle Razorpay lifecycle
 class CourseDetailScreen extends ConsumerStatefulWidget {
   const CourseDetailScreen({super.key});
 
@@ -15,12 +18,11 @@ class CourseDetailScreen extends ConsumerStatefulWidget {
 
 class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
   late Razorpay _razorpay;
-  int? _currentCourseId; // To track which course is being bought
+  int? _currentCourseId;
 
   @override
   void initState() {
     super.initState();
-    // 1. Initialize Razorpay
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
@@ -29,15 +31,13 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
 
   @override
   void dispose() {
-    _razorpay.clear(); // Important: Clear listeners
+    _razorpay.clear();
     super.dispose();
   }
 
   // --- Razorpay Handlers ---
-
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     try {
-      // 2. Call Backend to Verify & Enroll
       await ref.read(courseServiceProvider).verifyPayment({
         'razorpayOrderId': response.orderId,
         'razorpayPaymentId': response.paymentId,
@@ -47,11 +47,14 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Payment Successful! Enrolled."), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text("Payment Successful! Enrolled."),
+            backgroundColor: Colors.green,
+          ),
         );
-        // Refresh My Courses list
-        ref.invalidate(myCoursesProvider);
-        Navigator.pop(context);
+        ref.invalidate(myCoursesProvider); // Refresh the list of owned courses
+        // Optional: Don't pop, just rebuild to show "Start Learning"
+        setState(() {});
       }
     } catch (e) {
       _showError("Verification failed: $e");
@@ -74,33 +77,32 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     }
   }
 
-  // --- Main Payment Logic ---
   Future<void> _startPayment(Course course) async {
     try {
-      // 1. Get Order ID from Backend
-      final data = await ref.read(courseServiceProvider).createPaymentOrder(course.courseId!);
+      final user = ref.read(authNotifierProvider).user;
+      final userEmail = user?.email ?? '';
+      final userPhone = user?.phone ?? '';
 
+      final data = await ref.read(courseServiceProvider).createPaymentOrder(course.courseId!);
       final String keyId = data['keyId'];
       final Map<String, dynamic> order = data['order'];
 
       _currentCourseId = course.courseId;
 
-      // 2. Open Razorpay Checkout
       var options = {
         'key': keyId,
-        'amount': order['amount'], // Amount in paise
+        'amount': order['amount'],
         'name': 'JBH Academy',
         'description': course.title,
-        'order_id': order['id'], // Generate Order ID from Backend
+        'order_id': order['id'],
         'prefill': {
-          'contact': '9876543210', // You can fetch user phone from AuthState if available
-          'email': 'student@example.com' // Fetch user email from AuthState
+          'contact':userPhone , // TODO: Fetch real user phone
+          'email': userEmail, // TODO: Fetch real user email
         },
-        'theme': {'color': '#FF0000'}
+        'theme': {'color': '#FF0000'},
       };
 
       _razorpay.open(options);
-
     } catch (e) {
       _showError("Failed to start payment: $e");
     }
@@ -109,6 +111,16 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final course = ModalRoute.of(context)!.settings.arguments as Course;
+
+    // 1. Check Enrollment Status
+    final myCoursesAsync = ref.watch(myCoursesProvider);
+    bool isEnrolled = false;
+
+    myCoursesAsync.whenData((enrolledCourses) {
+      if (enrolledCourses.any((c) => c.courseId == course.courseId)) {
+        isEnrolled = true;
+      }
+    });
 
     return Scaffold(
       appBar: buildAppBar(context, title: "Details"),
@@ -121,57 +133,131 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
             Container(
               width: double.infinity,
               height: 200,
-              color: Colors.grey[300],
-              child: course.thumbnailUrl != null
-                  ? Image.network(course.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (c,e,s)=>const Icon(Icons.image))
-                  : const Center(child: Icon(Icons.image, size: 50)),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+                image: course.thumbnailUrl != null
+                    ? DecorationImage(
+                  image: NetworkImage(course.thumbnailUrl!),
+                  fit: BoxFit.cover,
+                )
+                    : null,
+              ),
+              child: course.thumbnailUrl == null
+                  ? const Center(child: Icon(Icons.image, size: 50, color: Colors.grey))
+                  : null,
             ),
             const SizedBox(height: 20),
 
-            // Title & Price
-            Text(course.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
+            // Title
             Text(
-              course.price == 0 ? "Free" : "Price: ₹${course.price}",
-              style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold),
+              course.title,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 10),
+
+            // Price Tag (Hide if enrolled)
+            if (!isEnrolled)
+              Text(
+                course.price == 0 ? "Free" : "Price: ₹${course.price}",
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
             const SizedBox(height: 20),
 
             // Description
-            const Text("Description:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              "Description:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(course.description ?? "No description available.", style: const TextStyle(fontSize: 15)),
+            Text(
+              course.description ?? "No description available.",
+              style: const TextStyle(fontSize: 15, height: 1.4),
+            ),
 
             const SizedBox(height: 40),
 
-            // --- PAY / ENROLL BUTTON ---
+            // --- 2. PREVIEW SYLLABUS BUTTON (Only if NOT enrolled) ---
+            if (!isEnrolled)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.list_alt),
+                  label: const Text("View Syllabus & Demo Lessons"),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Theme.of(context).primaryColor),
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.syllabusModule,
+                      arguments: SyllabusScreenArgs(
+                        courseId: course.courseId!,
+                        title: course.title,
+                        isEnrolled: false, // <--- Locks content
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // --- 3. MAIN ACTION BUTTON (Start Learning or Pay) ---
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  // Turn GREEN if enrolled, else Primary Color
+                  backgroundColor: isEnrolled ? Colors.green : Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
+                  elevation: 2,
                 ),
                 onPressed: () async {
-                  if (course.price == 0) {
-                    // Free Course Flow
-                    try {
-                      await ref.read(courseServiceProvider).enrollFree(course.courseId!);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enrolled Successfully!")));
-                        ref.invalidate(myCoursesProvider);
-                        Navigator.pop(context);
-                      }
-                    } catch (e) {
-                      _showError("Error: $e");
-                    }
+                  if (isEnrolled) {
+                    // FLOW A: Already Enrolled -> Go to Content
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.syllabusModule,
+                      arguments: SyllabusScreenArgs(
+                        courseId: course.courseId!,
+                        title: course.title,
+                        isEnrolled: true, // <--- Unlocks content
+                      ),
+                    );
                   } else {
-                    // Paid Course Flow (Razorpay)
-                    _startPayment(course);
+                    // FLOW B: Not Enrolled -> Buy or Free Enroll
+                    if (course.price == 0) {
+                      try {
+                        await ref.read(courseServiceProvider).enrollFree(course.courseId!);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Enrolled Successfully!")),
+                          );
+                          ref.invalidate(myCoursesProvider);
+                          // Refresh UI to show "Start Learning"
+                          setState(() {});
+                        }
+                      } catch (e) {
+                        _showError("Error: $e");
+                      }
+                    } else {
+                      _startPayment(course);
+                    }
                   }
                 },
-                child: Text(course.price == 0 ? "Enroll for Free" : "Pay ₹${course.price} & Enroll"),
+                child: Text(
+                  isEnrolled
+                      ? "Start Learning"
+                      : (course.price == 0 ? "Enroll for Free" : "Pay ₹${course.price} & Enroll"),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

@@ -24,6 +24,7 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
   bool _isEditing = false;
   int? _courseId;
   bool _isLoading = false;
+  bool _isPublished = false;
 
   // 2. State for File Picker
   PlatformFile? _pickedFile;
@@ -40,6 +41,7 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
       _descController.text = args.description ?? '';
       _priceController.text = args.price.toString();
       _existingImageUrl = args.thumbnailUrl;
+      _isPublished = args.isPublished;
     }
   }
 
@@ -87,6 +89,7 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
         description: _descController.text,
         price: double.tryParse(_priceController.text) ?? 0.0,
         thumbnailUrl: finalImageUrl,
+        isPublished: _isPublished,
       );
 
       if (_isEditing) {
@@ -156,6 +159,16 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
                   decoration: const InputDecoration(labelText: 'Price (₹)', border: OutlineInputBorder()),
                   keyboardType: TextInputType.number,
                   validator: (v) => v!.isEmpty ? 'Price is required' : null,
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text("Publish Course"),
+                  subtitle: Text(_isPublished ? "Visible to students" : "Draft (Hidden)"),
+                  value: _isPublished,
+                  activeColor: Colors.green,
+                  onChanged: (val) {
+                    setState(() => _isPublished = val);
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jbh_academy/Pages/syllabus_and_module.dart';
 import '../Components/common_app_bar.dart';
 import '../Components/floating_custom_nav_bar.dart';
 import '../app_routes.dart';
@@ -34,13 +35,24 @@ class MyCoursesScreen extends ConsumerWidget {
                   subtitle: course.enrollmentDate != null
                       ? Text("Enrolled on: ${course.enrollmentDate!.toLocal().toString().split(' ')[0]}")
                       : null,
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  trailing: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow, color: Colors.green, size: 20),
+                  ),
                   onTap: () {
                     // Navigate to Syllabus Screen passing the Course object
                     Navigator.pushNamed(
                         context,
                         AppRoutes.syllabusModule,
-                        arguments: course
+                        arguments: SyllabusScreenArgs(
+                          courseId: course.courseId!,
+                          title: course.title,
+                          isEnrolled: true,
+                        ),
                     );
                   },
                 ),
