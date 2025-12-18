@@ -18,9 +18,20 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  String _selectedRole = 'instructor'; // Default
+
+  String _selectedRole = 'instructor';
 
   bool _isLoading = false;
+  bool _showPassword = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +45,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
             children: [
               _buildTextField(_nameCtrl, "Full Name"),
 
-              // --- 1. EMAIL VALIDATION ---
+              // Email
               _buildTextField(
                 _emailCtrl,
                 "Email Address",
@@ -43,9 +54,8 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                   if (val == null || val.isEmpty) {
                     return 'Email Address is required';
                   }
-                  // Regex for standard email format
                   bool emailValid = RegExp(
-                    r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+                    r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
                   ).hasMatch(val);
                   if (!emailValid) {
                     return 'Enter a valid email address';
@@ -54,18 +64,18 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                 },
               ),
 
+              // Phone
               _buildTextField(_phoneCtrl, "Phone Number", isPhone: true),
 
-              // --- 2. PASSWORD VALIDATION ---
+              // Password with visibility toggle
               _buildTextField(
                 _passCtrl,
                 "Password",
-                isObscure: true,
+                isPassword: true,
                 validator: (val) {
                   if (val == null || val.isEmpty) {
                     return 'Password is required';
                   }
-                  // Regex: Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Number
                   String pattern =
                       r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{8,}$';
                   if (!RegExp(pattern).hasMatch(val)) {
@@ -76,6 +86,8 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
               ),
 
               const SizedBox(height: 16),
+
+              // Role
               DropdownButtonFormField<String>(
                 value: _selectedRole,
                 decoration: InputDecoration(
@@ -98,6 +110,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
               ),
 
               const SizedBox(height: 32),
+
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -129,28 +142,37 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     String label, {
     bool isEmail = false,
     bool isPhone = false,
-    bool isObscure = false,
-    String? Function(String?)? validator, // <--- 1. Add this parameter
+    bool isPassword = false,
+    String? Function(String?)? validator,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: ctrl,
-        obscureText: isObscure,
+        obscureText: isPassword ? !_showPassword : false,
         keyboardType: isEmail
             ? TextInputType.emailAddress
             : (isPhone ? TextInputType.phone : TextInputType.text),
-
-        // <--- 2. Use the passed validator, or fallback to the default check
         validator:
             validator ??
             (val) => val == null || val.isEmpty ? "$label is required" : null,
-
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: Colors.white,
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _showPassword ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _showPassword = !_showPassword;
+                    });
+                  },
+                )
+              : null,
         ),
       ),
     );
@@ -158,6 +180,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
 
     try {
@@ -170,6 +193,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
             phone: _phoneCtrl.text,
             role: _selectedRole,
           );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -180,10 +204,11 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
