@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jbh_academy/app_routes.dart';
 import '../../Components/floating_custom_nav_bar.dart';
 import '../../Components/common_app_bar.dart';
 import '../../Models/course_model.dart';
