@@ -32,15 +32,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       // 1. Success: Logged in
-      // NEW CODE (Copy this)
       if (next.token != null && next.user != null) {
-        // Determine where to go based on role
+
+        // --- UPDATED NAVIGATION LOGIC ---
         String nextRoute = AppRoutes.home; // Default to Student
 
-        if (next.user?.role == 'admin') {
+        // Normalize role to lowercase to handle "Instructor" vs "instructor"
+        final role = next.user?.role.toLowerCase().trim() ?? 'student';
+
+        if (role == 'admin') {
           nextRoute = AppRoutes.adminDashboard;
+        } else if (role == 'instructor') {
+          nextRoute = AppRoutes.instructorDashboard; // <--- Instructor Navigation Added
         }
-        // Future: else if (next.user?.role == 'instructor') ...
 
         Navigator.pushNamedAndRemoveUntil(
           context,
@@ -200,7 +204,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
 
                 const SizedBox(height: 50),
-                // Social Icons Row (Simplified for brevity)
+                // Social Icons Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

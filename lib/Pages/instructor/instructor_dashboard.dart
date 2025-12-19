@@ -1,234 +1,315 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../app_routes.dart';
-import '../../services/instructor_service.dart';
+import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class InstructorDashboard extends ConsumerStatefulWidget {
+// --- Imports from your project ---
+import 'package:jbh_academy/state/auth_notifier.dart';
+import 'package:jbh_academy/services/instructor_service.dart';
+import 'package:jbh_academy/app_routes.dart';
+import 'package:jbh_academy/Pages/live_class/live_class_screen.dart'; // Ensure this import is correct
+
+// --- Import Refactored Widgets ---
+import 'widgets/class_card.dart';
+import 'widgets/course_card.dart';
+import 'widgets/stat_badge.dart';
+import '../../Components/empty_state_widget.dart';
+
+// Provider to fetch dashboard data
+final instructorDashboardProvider = FutureProvider.autoDispose((ref) async {
+  return ref.read(instructorServiceProvider).getDashboardData();
+});
+
+class InstructorDashboard extends ConsumerWidget {
   const InstructorDashboard({super.key});
 
   @override
-  ConsumerState<InstructorDashboard> createState() => _InstructorDashboardState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).user;
+    final dashboardAsync = ref.watch(instructorDashboardProvider);
 
-class _InstructorDashboardState extends ConsumerState<InstructorDashboard> {
-  List<dynamic> _schedule = [];
-  bool _isLoading = true;
-  String? _errorMessage;
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: dashboardAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error loading dashboard: $err')),
+        data: (data) {
+          final todayClasses = data['todaySchedule'] as List;
+          final courses = data['courses'] as List;
+          final special = data['upcomingSpecial'] as List;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchSchedule();
-  }
+          return CustomScrollView(
+            slivers: [
+              // 1. Header Section
+              _buildSliverAppBar(ref, user?.fullName ?? "Instructor", todayClasses.length, courses.length),
 
-  Future<void> _fetchSchedule() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-
-      // 1. Use ref.read to get the updated service
-      final service = ref.read(instructorServiceProvider);
-
-      // Service now returns List<dynamic> directly (or throws error)
-      final scheduleData = await service.getInstructorSchedule();
-
-      if (mounted) {
-        setState(() {
-          _schedule = scheduleData;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceAll("Exception: ", "");
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // Changed scheduleId to int to match backend schema
-  Future<void> _handleGoLive(int scheduleId, String defaultTopic) async {
-    final TextEditingController topicController = TextEditingController(text: defaultTopic);
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Start Live Class"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Confirm the topic for this session:"),
-            const SizedBox(height: 10),
-            TextField(
-              controller: topicController,
-              decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: "e.g., Algebra Basics"
+              // 2. Today's Classes Section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Today's Schedule",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 15),
+                      todayClasses.isEmpty
+                          ? const EmptyStateWidget(
+                        message: "No classes scheduled for today.\nEnjoy your day off!",
+                        icon: Icons.event_available,
+                      )
+                          : SizedBox(
+                        height: 170, // Slightly taller for better spacing
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: todayClasses.length,
+                          itemBuilder: (context, index) {
+                            final cls = todayClasses[index];
+                            return _ClassCardWrapper(
+                                cls: cls,
+                                ref: ref,
+                                userName: user?.fullName ?? "Instructor"
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel")
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _startClassApi(scheduleId, topicController.text);
-            },
-            child: const Text("GO LIVE NOW", style: TextStyle(color: Colors.white)),
-          ),
-        ],
+
+              // 3. My Courses Grid
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "My Courses",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 15),
+                    ],
+                  ),
+                ),
+              ),
+
+              courses.isEmpty
+                  ? const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: EmptyStateWidget(message: "You haven't been assigned any courses yet."),
+                  )
+              )
+                  : SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 1.1,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                        (context, index) => CourseCard(course: courses[index]),
+                    childCount: courses.length,
+                  ),
+                ),
+              ),
+
+              // 4. Upcoming Special Lectures
+              if (special.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Upcoming Special Lectures",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        ...special.map((s) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                                color: Colors.orange[50],
+                                borderRadius: BorderRadius.circular(8)
+                            ),
+                            child: const Icon(Icons.star, color: Colors.orange),
+                          ),
+                          title: Text(s['course']['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(DateFormat('MMM dd, yyyy').format(DateTime.parse(s['specific_date']))),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4)),
+                            child: Text("${s['start_time']} - ${s['end_time']}", style: const TextStyle(fontSize: 12)),
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              const SliverToBoxAdapter(child: SizedBox(height: 50)),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Future<void> _startClassApi(int scheduleId, String topic) async {
-    // Show loading
-    showDialog(
+  Widget _buildSliverAppBar(WidgetRef ref, String name, int classCount, int courseCount) {
+    return SliverAppBar(
+      expandedHeight: 180.0,
+      floating: false,
+      pinned: true,
+      backgroundColor: Colors.deepPurple,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)], // Professional Purple
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.only(left: 20, bottom: 20, right: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Welcome back,",
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  StatBadge(text: "$classCount Classes Today", icon: Icons.calendar_today),
+                  const SizedBox(width: 10),
+                  StatBadge(text: "$courseCount Courses", icon: Icons.book),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.logout, color: Colors.white),
+          onPressed: () {
+            ref.read(authNotifierProvider.notifier).logout();
+          },
+        )
+      ],
+    );
+  }
+}
+
+// --- LOGIC WRAPPER FOR CLASS CARD ---
+// Extracts logic from UI to keep the main build method clean
+class _ClassCardWrapper extends StatelessWidget {
+  final dynamic cls;
+  final WidgetRef ref;
+  final String userName;
+
+  const _ClassCardWrapper({
+    required this.cls,
+    required this.ref,
+    required this.userName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Basic Time Check (Improve this with exact Date/Time parsing for production)
+    // For now, assuming if it's in "Today's Schedule", it's valid to start.
+    final bool isLive = true;
+
+    return ClassCard(
+      title: cls['course']['title'],
+      startTime: cls['start_time'],
+      endTime: cls['end_time'],
+      isLive: isLive,
+      onStart: () => _handleGoLive(context),
+    );
+  }
+
+  Future<void> _handleGoLive(BuildContext context) async {
+    // 1. Check Permissions
+    final mic = await Permission.microphone.request();
+    final cam = await Permission.camera.request();
+
+    if (mic != PermissionStatus.granted || cam != PermissionStatus.granted) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Camera and Microphone permissions are required to go live.")),
+        );
+      }
+      return;
+    }
+
+    // 2. Show Loading
+    if (context.mounted) {
+      showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator())
-    );
+        builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
 
     try {
-      final service = ref.read(instructorServiceProvider);
+      // 3. Call Backend to Start/Resume Class
+      final scheduleId = cls['schedule_id']; // Ensure backend sends this!
+      final title = cls['course']['title'] ?? "Live Class";
 
-      // 2. Call startLiveClass with named parameters (int scheduleId)
-      final response = await service.startLiveClass(
-          scheduleId: scheduleId,
-          topic: topic
+      final result = await ref.read(instructorServiceProvider).startLiveClass(
+        scheduleId: scheduleId,
+        topic: title,
       );
 
-      if (!mounted) return;
-      Navigator.pop(context); // Dismiss loading
+      // 4. Navigate to Live Screen
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
 
-      // 3. Navigate on success
-      if (response['success'] == true) {
-        final roomId = response['roomId'];
-        final token = response['token'];
-        // You can also get 'liveLectureId' if needed for other logic
-
-        if (!mounted) return;
-
-        Navigator.pushNamed(
+        Navigator.push(
           context,
-          AppRoutes.liveClass,
-          arguments: LiveClassArgs(
-            roomId: roomId,
-            token: token,
-            isInstructor: true,
-            displayName: "Instructor", // Replace with actual user name if available in state
+          MaterialPageRoute(
+            builder: (context) => LiveClassScreen(
+              roomId: result['roomId'],
+              token: result['token'], // Use token from backend
+              isInstructor: true,
+              displayName: userName,
+            ),
           ),
         );
       }
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Dismiss loading
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: Colors.red
-        ),
-      );
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("Failed to go live: $e"),
+              backgroundColor: Colors.red
+          ),
+        );
+      }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Instructor Dashboard")),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _fetchSchedule,
-              child: const Text("Retry"),
-            )
-          ],
-        ),
-      )
-          : _schedule.isEmpty
-          ? const Center(child: Text("No classes scheduled for today!"))
-          : RefreshIndicator(
-        onRefresh: _fetchSchedule,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _schedule.length,
-          itemBuilder: (context, index) {
-            final slot = _schedule[index];
-
-            final courseData = slot['course'] ?? {};
-            final moduleData = slot['module'] ?? {};
-
-            final courseTitle = courseData['title'] ?? 'Unknown Course';
-            final subject = moduleData['title'] ?? 'General Session';
-
-            // Helper to safely get start/end times
-            final startTime = slot['start_time'] ?? '??';
-            final endTime = slot['end_time'] ?? '??';
-            final time = "$startTime - $endTime";
-
-            // 4. Safely parse scheduleId as int
-            final scheduleId = slot['schedule_id'] as int;
-
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(time, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                        const Chip(
-                          label: Text("Scheduled", style: TextStyle(fontSize: 10, color: Colors.white)),
-                          backgroundColor: Colors.orange,
-                          padding: EdgeInsets.zero,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(courseTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text("Subject: $subject", style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _handleGoLive(scheduleId, subject),
-                        icon: const Icon(Icons.videocam),
-                        label: const Text("Start Live Class"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
   }
 }

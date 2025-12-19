@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/app_routes.dart';
@@ -30,9 +31,10 @@ class _AuthGuardScreenState extends ConsumerState<AuthGuardScreen>
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     // 2. Start the minimum 3-second timer
     Timer(const Duration(seconds: 3), () {
@@ -67,10 +69,37 @@ class _AuthGuardScreenState extends ConsumerState<AuthGuardScreen>
       final state = ref.read(authNotifierProvider);
 
       if (state.user != null && state.token != null) {
-        if (state.isAdmin) {
-          Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
-        } else {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        // FIX: Normalize role to lowercase to prevent "Instructor" vs "instructor" bugs
+        final role = state.user?.role.toLowerCase().trim() ?? 'student';
+
+        switch (role) {
+          case 'admin':
+            Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+            break;
+          case 'instructor':
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.instructorDashboard,
+            );
+            break;
+          case 'student':
+            Navigator.pushReplacementNamed(context, AppRoutes.home);
+            break;
+          default:
+            // Fallback for unknown roles
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "Error: Unknown role detected: '${state.user?.role}'",
+                ),
+                backgroundColor: Colors.red,
+                // Make it red so it catches your eye
+                duration: const Duration(seconds: 5),
+              ),
+            );
+
+            // It is safer to send them to Login rather than Home if the role is weird
+            Navigator.pushReplacementNamed(context, AppRoutes.login);
         }
       } else {
         Navigator.pushReplacementNamed(context, AppRoutes.login);
@@ -100,11 +129,7 @@ class _AuthGuardScreenState extends ConsumerState<AuthGuardScreen>
             height: 150,
             // Handle error if asset is missing
             errorBuilder: (context, error, stackTrace) {
-              return const Icon(
-                  Icons.school,
-                  size: 150,
-                  color: Colors.white
-              );
+              return const Icon(Icons.school, size: 150, color: Colors.white);
             },
           ),
         ),

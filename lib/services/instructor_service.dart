@@ -37,6 +37,15 @@ class InstructorService {
       throw Exception(e.response?.data['message'] ?? 'Failed to start class');
     }
   }
+
+  Future<Map<String, dynamic>> getDashboardData() async {
+    try {
+      final response = await _dio.get('/lms/instructor/dashboard');
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to load dashboard: $e');
+    }
+  }
 }
 
 // --- PROVIDER ---
