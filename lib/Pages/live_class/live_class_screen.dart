@@ -5,14 +5,12 @@ import 'participant_tile.dart';
 class LiveClassScreen extends StatefulWidget {
   final String roomId;
   final String token;
-  final bool isInstructor;
   final String displayName;
 
   const LiveClassScreen({
     super.key,
     required this.roomId,
     required this.token,
-    required this.isInstructor,
     required this.displayName,
   });
 
@@ -65,18 +63,6 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
 
     // 3. Join
     await _room!.join();
-
-    // 4. Start Recording if Instructor
-    if (widget.isInstructor) {
-      try {
-        _room!.on(Events.roomJoined, () {
-          _room!.startRecording();
-          print("🔴 Recording started automatically for Instructor");
-        });
-      } catch (e) {
-        print("Failed to start recording: $e");
-      }
-    }
   }
 
   void _setupRoomListeners() {
@@ -273,15 +259,12 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
 
               if (_localCamState) {
                 try {
-                  // FIX: Use CustomVideoTrackConfig Enum, NOT String
-                  CustomVideoTrackConfig config = widget.isInstructor
-                      ? CustomVideoTrackConfig.h720p_w1280p  // High Quality for Instructor
-                      : CustomVideoTrackConfig.h180p_w320p;  // Low Quality for Students
+                  // ALWAYS use low/standard quality for mobile students to save data/battery
+                  CustomVideoTrackConfig config = CustomVideoTrackConfig.h180p_w320p;
 
-                  // 2. Create the Custom Track
                   CustomTrack? track = await VideoSDK.createCameraVideoTrack(
                     encoderConfig: config,
-                    multiStream: false, // Force single stream
+                    multiStream: false,
                   );
 
                   // 3. Enable Cam with the created track

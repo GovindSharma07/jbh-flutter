@@ -76,12 +76,6 @@ class _AuthGuardScreenState extends ConsumerState<AuthGuardScreen>
           case 'admin':
             Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
             break;
-          case 'instructor':
-            Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.instructorDashboard,
-            );
-            break;
           case 'student':
             Navigator.pushReplacementNamed(context, AppRoutes.home);
             break;

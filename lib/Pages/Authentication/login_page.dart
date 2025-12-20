@@ -33,7 +33,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       // 1. Success: Logged in
       if (next.token != null && next.user != null) {
-
         // --- UPDATED NAVIGATION LOGIC ---
         String nextRoute = AppRoutes.home; // Default to Student
 
@@ -43,27 +42,38 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         if (role == 'admin') {
           nextRoute = AppRoutes.adminDashboard;
         } else if (role == 'instructor') {
-          nextRoute = AppRoutes.instructorDashboard; // <--- Instructor Navigation Added
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Instructors: Please use the Web Portal to manage classes.",
+              ),
+            ),
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            nextRoute,
+            (route) => false,
+          );
         }
-
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          nextRoute,
-              (route) => false,
-        );
       }
       // 2. Unverified: Navigate to Verification (Check tempEmail)
-      else if (!next.isLoading && next.error == null && next.tempEmail != null) {
+      else if (!next.isLoading &&
+          next.error == null &&
+          next.tempEmail != null) {
         // Only navigate if we haven't just come from a state that already had this email
         if (previous?.tempEmail != next.tempEmail) {
           Navigator.pushNamed(context, AppRoutes.verification);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please verify your account to continue.')),
+            const SnackBar(
+              content: Text('Please verify your account to continue.'),
+            ),
           );
         }
       }
       // 3. Error: Show Snackbar (Fix double showing)
-      else if (next.error != null && (previous == null || previous.error != next.error)) {
+      else if (next.error != null &&
+          (previous == null || previous.error != next.error)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );
@@ -105,15 +115,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: 50),
 
                 // --- Email ---
-                const Text('Gmail', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Gmail',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.black),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your email';
-                    bool emailValid = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value);
+                    if (value == null || value.isEmpty)
+                      return 'Please enter your email';
+                    bool emailValid = RegExp(
+                      r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+                    ).hasMatch(value);
                     if (!emailValid) return 'Please enter a valid email format';
                     return null;
                   },
@@ -122,22 +142,39 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    errorStyle: const TextStyle(color: Color(0xFFE94B3C), fontWeight: FontWeight.bold),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    errorStyle: const TextStyle(
+                      color: Color(0xFFE94B3C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
                 // --- Password ---
-                const Text('Password', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Password',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
                   style: const TextStyle(color: Colors.black),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your password';
+                    if (value == null || value.isEmpty)
+                      return 'Please enter your password';
                     return null;
                   },
                   decoration: InputDecoration(
@@ -145,12 +182,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    errorStyle: const TextStyle(color: Color(0xFFE94B3C), fontWeight: FontWeight.bold),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    errorStyle: const TextStyle(
+                      color: Color(0xFFE94B3C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
                     suffixIcon: IconButton(
-                      icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible,
+                      ),
                     ),
                   ),
                 ),
@@ -158,8 +211,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () => Navigator.pushNamed(context, AppRoutes.forgotPassword),
-                    child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFFE94B3C))),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, AppRoutes.forgotPassword),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: Color(0xFFE94B3C)),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -168,25 +225,37 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: isSubmitting ? null : () {
-                      if (_formKey.currentState!.validate()) {
-                        ref.read(authNotifierProvider.notifier).login(
-                          _emailController.text,
-                          _passwordController.text,
-                        );
-                      }
-                    },
+                    onPressed: isSubmitting
+                        ? null
+                        : () {
+                            if (_formKey.currentState!.validate()) {
+                              ref
+                                  .read(authNotifierProvider.notifier)
+                                  .login(
+                                    _emailController.text,
+                                    _passwordController.text,
+                                  );
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                     ),
                     child: isSubmitting
-                        ? const CircularProgressIndicator(color: Color(0xFF1D4D6B))
+                        ? const CircularProgressIndicator(
+                            color: Color(0xFF1D4D6B),
+                          )
                         : const Text(
-                      'Login',
-                      style: TextStyle(color: Color(0xFF1D4D6B), fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                            'Login',
+                            style: TextStyle(
+                              color: Color(0xFF1D4D6B),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -195,10 +264,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    const Text("Don't have account? ", style: TextStyle(color: Colors.white70, fontSize: 16)),
+                    const Text(
+                      "Don't have account? ",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
-                      child: const Text('Create Now', style: TextStyle(color: Color(0xFF3498DB), fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: () =>
+                          Navigator.pushNamed(context, AppRoutes.register),
+                      child: const Text(
+                        'Create Now',
+                        style: TextStyle(
+                          color: Color(0xFF3498DB),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -221,9 +301,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Center(
                   child: Column(
                     children: [
-                      Image.asset('assets/icons/jbh_logo.png', height: 60, errorBuilder: (c,e,s)=> const Icon(Icons.image, size: 60, color: Colors.white54)),
+                      Image.asset(
+                        'assets/icons/jbh_logo.png',
+                        height: 60,
+                        errorBuilder: (c, e, s) => const Icon(
+                          Icons.image,
+                          size: 60,
+                          color: Colors.white54,
+                        ),
+                      ),
                       const SizedBox(height: 10),
-                      const Text('www.jbhtechacademy.com', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      const Text(
+                        'www.jbhtechacademy.com',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
                     ],
                   ),
                 ),
@@ -237,10 +328,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Widget _buildSocialIcon(String imagePath) {
     return Container(
-      width: 45, height: 45,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+      width: 45,
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+      ),
       padding: const EdgeInsets.all(8),
-      child: Image.asset(imagePath, errorBuilder: (c,e,s) => const Icon(Icons.error, color: Colors.red, size: 20)),
+      child: Image.asset(
+        imagePath,
+        errorBuilder: (c, e, s) =>
+            const Icon(Icons.error, color: Colors.red, size: 20),
+      ),
     );
   }
 }

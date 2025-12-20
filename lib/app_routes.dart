@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:jbh_academy/Pages/Authentication/login_page.dart';
 import 'package:jbh_academy/Pages/admin/manage_syllabus_screen.dart';
 
+import 'Models/lesson_model.dart';
 import 'Pages/Authentication/auth_guard_screen.dart';
 import 'Pages/Authentication/forgot_screen_page.dart';
 import 'Pages/Authentication/register_page.dart';
@@ -25,9 +26,9 @@ import 'Pages/assignment_screen.dart';
 import 'Pages/attendance_screen.dart';
 import 'Pages/course/course_detail_screen.dart';
 import 'Pages/course/course_selection_screen.dart';
+import 'Pages/course/lesson_viewer_screen.dart';
 import 'Pages/demo_class_screen.dart';
 import 'Pages/home_page.dart';
-import 'Pages/instructor/instructor_dashboard.dart';
 import 'Pages/live_class/live_class_screen.dart';
 import 'Pages/live_lecture_screen.dart';
 import 'Pages/resume/manage_resumes_screen.dart';
@@ -87,9 +88,8 @@ class AppRoutes {
   static const String manageCourses = '/admin/manage-courses';
   static const String addEditCourse = '/admin/add-edit-course';
   static const String manageSyllabus = '/admin/manage-syllabus';
-  static const String instructorDashboard = '/instructor/dashboard';
   static const String liveClass = '/live-class';
-
+  static const String lessonViewer = '/lesson-viewer';
   static const String assignSchedule = "/admin/assign-schedule";
 
   static const String adminApprenticeshipList = '/admin/apprenticeships-list';
@@ -140,8 +140,11 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.manageCourses: (context) => const ManageCoursesScreen(),
   AppRoutes.addEditCourse: (context) => const AddEditCourseScreen(),
   AppRoutes.manageSyllabus: (context)=> const ManageSyllabusScreen(),
-  AppRoutes.instructorDashboard: (context) => const InstructorDashboard(),
   AppRoutes.liveClass: (context) => const _LiveClassWrapper(), // Wrapper to handle arguments
+  AppRoutes.lessonViewer: (context) {
+    final lesson = ModalRoute.of(context)!.settings.arguments as Lesson;
+    return LessonViewerScreen(lesson: lesson);
+  },
   AppRoutes.assignSchedule: (context) => const AssignScheduleScreen(),
 
   // 1. Admin Job List
@@ -161,13 +164,11 @@ Map<String, WidgetBuilder> appRoutes = {
 class LiveClassArgs {
   final String roomId;
   final String token;
-  final bool isInstructor;
   final String displayName;
 
   LiveClassArgs({
     required this.roomId,
     required this.token,
-    required this.isInstructor,
     required this.displayName,
   });
 }
@@ -185,7 +186,6 @@ class _LiveClassWrapper extends StatelessWidget {
     return LiveClassScreen(
       roomId: args.roomId,
       token: args.token,
-      isInstructor: args.isInstructor,
       displayName: args.displayName,
     );
   }

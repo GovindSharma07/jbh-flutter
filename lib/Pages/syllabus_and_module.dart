@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../Components/floating_custom_nav_bar.dart';
+
 import '../../Components/common_app_bar.dart';
+import '../../Components/floating_custom_nav_bar.dart';
 import '../../Models/course_model.dart';
 import '../../Models/lesson_model.dart';
 import '../../services/course_service.dart';
 import '../../services/student_service.dart';
+import '../app_routes.dart';
 import 'course/lesson_viewer_screen.dart';
-import 'live_class/live_class_screen.dart';
 
 // 1. Arguments Class
 class SyllabusScreenArgs {
@@ -25,18 +26,18 @@ class SyllabusScreenArgs {
 // Provider to fetch course details
 final studentCourseDetailProvider = FutureProvider.family
     .autoDispose<Course, int>((ref, courseId) async {
-  return ref.watch(courseServiceProvider).getCourseDetail(courseId);
-});
+      return ref.watch(courseServiceProvider).getCourseDetail(courseId);
+    });
 
 class SyllabusModulesScreen extends ConsumerStatefulWidget {
   const SyllabusModulesScreen({super.key});
 
   @override
-  ConsumerState<SyllabusModulesScreen> createState() => _SyllabusModulesScreenState();
+  ConsumerState<SyllabusModulesScreen> createState() =>
+      _SyllabusModulesScreenState();
 }
 
 class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
-
   // Logic to Join Live Class directly from Syllabus
   Future<void> _handleJoinLive(int lessonId) async {
     // Show Loading
@@ -54,35 +55,39 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
 
       // Temporary: We are just calling the join API.
       // Ideally, pass the real liveLectureId associated with this lesson.
-      final data = await ref.read(studentServiceProvider).joinLiveLecture(lessonId);
+      final data = await ref
+          .read(studentServiceProvider)
+          .joinLiveLecture(lessonId);
 
       if (!mounted) return;
       Navigator.pop(context); // Close Loading
 
       // Navigate to VideoSDK Room
-      Navigator.push(
+      Navigator.pushNamed(
         context,
-        MaterialPageRoute(
-          builder: (context) => LiveClassScreen(
-            roomId: data['roomId'],
-            token: data['token'],
-            isInstructor: false,
-            displayName: "Student",
-          ),
+        AppRoutes.liveClass,
+        arguments: LiveClassArgs(
+          roomId: data['roomId'],
+          token: data['token'],
+          displayName: "Student",
         ),
       );
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close Loading
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not join: $e"), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text("Could not join: $e"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as SyllabusScreenArgs?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as SyllabusScreenArgs?;
 
     if (args == null) {
       return const Scaffold(body: Center(child: Text("Error: No course data")));
@@ -109,7 +114,12 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
             separatorBuilder: (ctx, i) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final module = modules[index];
-              return _buildModuleCard(module, args.isEnrolled, index == 0, primaryColor);
+              return _buildModuleCard(
+                module,
+                args.isEnrolled,
+                index == 0,
+                primaryColor,
+              );
             },
           );
         },
@@ -120,13 +130,22 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
     );
   }
 
-  Widget _buildModuleCard(dynamic module, bool isEnrolled, bool isFirst, Color color) {
+  Widget _buildModuleCard(
+    dynamic module,
+    bool isEnrolled,
+    bool isFirst,
+    Color color,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: ClipRRect(
@@ -135,7 +154,8 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
           initiallyExpanded: isFirst,
           backgroundColor: Colors.white,
           collapsedBackgroundColor: Colors.white,
-          shape: const Border(), // Removes default divider borders
+          shape: const Border(),
+          // Removes default divider borders
           leading: CircleAvatar(
             backgroundColor: color.withOpacity(0.1),
             child: Text(
@@ -159,7 +179,8 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
   Widget _buildLessonTile(Lesson lesson, bool isEnrolled) {
     // 1. Determine Status
     final bool isLive = lesson.contentType == 'live';
-    final bool isLocked = !isEnrolled && !lesson.isFree && !isLive; // Live might be free/demo?
+    final bool isLocked =
+        !isEnrolled && !lesson.isFree && !isLive; // Live might be free/demo?
 
     IconData icon;
     Color iconColor;
@@ -197,22 +218,32 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
           ),
         ),
         subtitle: isLive
-            ? const Text("HAPPENING NOW", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))
-            : Text(lesson.duration != null ? "${lesson.duration} mins" : "Lesson", style: const TextStyle(fontSize: 12)),
+            ? const Text(
+                "HAPPENING NOW",
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : Text(
+                lesson.duration != null ? "${lesson.duration} mins" : "Lesson",
+                style: const TextStyle(fontSize: 12),
+              ),
 
         trailing: isLocked
             ? const Icon(Icons.lock_outline, size: 18, color: Colors.grey)
             : isLive
             ? ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            minimumSize: const Size(60, 30),
-          ),
-          onPressed: () => _handleJoinLive(lesson.lessonId),
-          child: const Text("JOIN"),
-        )
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(60, 30),
+                ),
+                onPressed: () => _handleJoinLive(lesson.lessonId),
+                child: const Text("JOIN"),
+              )
             : const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
 
         onTap: () {
@@ -224,11 +255,10 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
             _handleJoinLive(lesson.lessonId);
           } else {
             // Open Viewer
-            Navigator.push(
+            Navigator.pushNamed(
               context,
-              MaterialPageRoute(
-                builder: (context) => LessonViewerScreen(lesson: lesson),
-              ),
+              AppRoutes.lessonViewer,
+              arguments: lesson,
             );
           }
         },
@@ -258,7 +288,13 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         child: ElevatedButton(
@@ -266,13 +302,18 @@ class _SyllabusModulesScreenState extends ConsumerState<SyllabusModulesScreen> {
             backgroundColor: color,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           onPressed: () {
             // Navigate back to details or trigger payment
             Navigator.pop(context);
           },
-          child: const Text("Unlock Full Course", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: const Text(
+            "Unlock Full Course",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
       ),
     );

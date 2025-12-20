@@ -4,7 +4,8 @@ import 'package:jbh_academy/Components/common_app_bar.dart';
 import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import 'package:jbh_academy/Components/upcoming_lecture_card.dart';
 import 'package:jbh_academy/services/student_service.dart';
-import 'package:jbh_academy/Pages/live_class/live_class_screen.dart'; // Ensure this import exists
+
+import '../app_routes.dart';
 
 class LecturesScreen extends ConsumerStatefulWidget {
   const LecturesScreen({Key? key}) : super(key: key);
@@ -26,7 +27,9 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
   Future<void> _fetchLectures() async {
     try {
       // Fetch today's schedule from the backend
-      final schedule = await ref.read(studentServiceProvider).getTodaySchedule();
+      final schedule = await ref
+          .read(studentServiceProvider)
+          .getTodaySchedule();
       if (mounted) {
         setState(() {
           _todaySchedule = schedule;
@@ -35,7 +38,9 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -50,7 +55,9 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
 
     try {
       // 1. Call Backend (Marks Attendance & Gets Token)
-      final data = await ref.read(studentServiceProvider).joinLiveLecture(liveLectureId);
+      final data = await ref
+          .read(studentServiceProvider)
+          .joinLiveLecture(liveLectureId);
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -60,22 +67,22 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
 
       // 2. Navigate to the actual Video Screen
       if (mounted) {
-        Navigator.push(
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (context) => LiveClassScreen(
-              roomId: roomId,
-              token: token,
-              isInstructor: false,
-              displayName: "Student", // You can fetch the real name from UserProvider
-            ),
+          AppRoutes.liveClass,
+          arguments: LiveClassArgs(
+            roomId: roomId,
+            token: token,
+            displayName: "Student",
           ),
         );
       }
     } catch (e) {
       // Close loading dialog on error
       if (mounted) Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error joining: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error joining: $e")));
     }
   }
 
@@ -85,8 +92,12 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
 
     // Filter Logic:
     // We assume the backend returns a field 'is_live' or checks if 'live_lecture_id' is present
-    final liveNow = _todaySchedule.where((s) => s['live_lecture_id'] != null || s['status'] == 'live').toList();
-    final upcoming = _todaySchedule.where((s) => s['live_lecture_id'] == null && s['status'] != 'live').toList();
+    final liveNow = _todaySchedule
+        .where((s) => s['live_lecture_id'] != null || s['status'] == 'live')
+        .toList();
+    final upcoming = _todaySchedule
+        .where((s) => s['live_lecture_id'] == null && s['status'] != 'live')
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -94,79 +105,94 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: _fetchLectures,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- LIVE NOW SECTION ---
-                if (liveNow.isNotEmpty) ...[
-                  Text(
-                    'Live Lectures',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryColor),
-                  ),
-                  const SizedBox(height: 16),
-                  ...liveNow.map((slot) {
-                    // Extract Data
-                    final title = slot['course']['title'] ?? 'Live Class';
-                    final instructor = slot['instructor']['full_name'] ?? 'Instructor';
-                    final liveLectureId = slot['live_lecture_id']; // Needed for Joining
+              onRefresh: _fetchLectures,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- LIVE NOW SECTION ---
+                      if (liveNow.isNotEmpty) ...[
+                        Text(
+                          'Live Lectures',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...liveNow.map((slot) {
+                          // Extract Data
+                          final title = slot['course']['title'] ?? 'Live Class';
+                          final instructor =
+                              slot['instructor']['full_name'] ?? 'Instructor';
+                          final liveLectureId =
+                              slot['live_lecture_id']; // Needed for Joining
 
-                    return LiveLectureCard(
-                      primaryColor: primaryColor,
-                      title: title,
-                      instructor: instructor,
-                      onJoin: () {
-                        if (liveLectureId != null) {
-                          _onJoinClassPressed(liveLectureId);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Class hasn't started yet!"))
+                          return LiveLectureCard(
+                            primaryColor: primaryColor,
+                            title: title,
+                            instructor: instructor,
+                            onJoin: () {
+                              if (liveLectureId != null) {
+                                _onJoinClassPressed(liveLectureId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Class hasn't started yet!"),
+                                  ),
+                                );
+                              }
+                            },
                           );
-                        }
-                      },
-                    );
-                  }).toList(),
-                  const SizedBox(height: 30),
-                ],
+                        }).toList(),
+                        const SizedBox(height: 30),
+                      ],
 
-                // --- UPCOMING SECTION ---
-                const Text(
-                  'Upcoming Lectures',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                const SizedBox(height: 16),
+                      // --- UPCOMING SECTION ---
+                      const Text(
+                        'Upcoming Lectures',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
-                if (upcoming.isEmpty && liveNow.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 20),
-                    child: Center(child: Text("No lectures scheduled for today.")),
+                      if (upcoming.isEmpty && liveNow.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 20),
+                          child: Center(
+                            child: Text("No lectures scheduled for today."),
+                          ),
+                        ),
+
+                      ...upcoming.map((slot) {
+                        final title = slot['course']['title'] ?? 'Class';
+                        final start = slot['start_time'] ?? '00:00';
+                        final end = slot['end_time'] ?? '00:00';
+                        final instructor =
+                            slot['instructor']['full_name'] ?? 'Instructor';
+
+                        return UpcomingLectureCard(
+                          imagePath: 'assets/images/lecture_image.png',
+                          title: title,
+                          date: "Today",
+                          time: '$start - $end',
+                          instructor: instructor,
+                          reminderTime: 'Scheduled',
+                          primaryColor: primaryColor,
+                        );
+                      }).toList(),
+                    ],
                   ),
-
-                ...upcoming.map((slot) {
-                  final title = slot['course']['title'] ?? 'Class';
-                  final start = slot['start_time'] ?? '00:00';
-                  final end = slot['end_time'] ?? '00:00';
-                  final instructor = slot['instructor']['full_name'] ?? 'Instructor';
-
-                  return UpcomingLectureCard(
-                    imagePath: 'assets/images/lecture_image.png',
-                    title: title,
-                    date: "Today",
-                    time: '$start - $end',
-                    instructor: instructor,
-                    reminderTime: 'Scheduled',
-                    primaryColor: primaryColor,
-                  );
-                }).toList(),
-              ],
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
       bottomNavigationBar: FloatingCustomNavBar(),
     );
   }
@@ -214,9 +240,18 @@ class LiveLectureCard extends StatelessWidget {
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(20)),
-                    child: const Text('● Live Now', style: TextStyle(color: Colors.white, fontSize: 10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      '● Live Now',
+                      style: TextStyle(color: Colors.white, fontSize: 10),
+                    ),
                   ),
                 ),
               ],
@@ -229,12 +264,19 @@ class LiveLectureCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text('By $instructor', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  Text(
+                    'By $instructor',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -243,9 +285,14 @@ class LiveLectureCard extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
                       ),
-                      child: const Text('Join Now', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      child: const Text(
+                        'Join Now',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
                     ),
                   ),
                 ],
