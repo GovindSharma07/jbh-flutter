@@ -10,7 +10,9 @@ import 'Pages/Authentication/register_page.dart';
 import 'Pages/Authentication/reset_password_screen.dart';
 import 'Pages/Authentication/verification Page.dart';
 import 'Pages/admin/add_edit_course_screen.dart';
+import 'Pages/admin/admin_apprenticeship_list.dart';
 import 'Pages/admin/admin_dashboard.dart';
+import 'Pages/admin/apprenticeship_applicants_screen.dart';
 import 'Pages/admin/assign_schedule_screen.dart';
 import 'Pages/admin/create_apprenticeship_screen.dart';
 import 'Pages/admin/create_user_screen.dart';
@@ -90,6 +92,9 @@ class AppRoutes {
 
   static const String assignSchedule = "/admin/assign-schedule";
 
+  static const String adminApprenticeshipList = '/admin/apprenticeships-list';
+  static const String adminApprenticeshipApplicants = '/admin/apprenticeship-applicants';
+
 }
 
 Map<String, WidgetBuilder> appRoutes = {
@@ -138,6 +143,12 @@ Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.instructorDashboard: (context) => const InstructorDashboard(),
   AppRoutes.liveClass: (context) => const _LiveClassWrapper(), // Wrapper to handle arguments
   AppRoutes.assignSchedule: (context) => const AssignScheduleScreen(),
+
+  // 1. Admin Job List
+  AppRoutes.adminApprenticeshipList: (context) => const AdminApprenticeshipListScreen(),
+
+  // 2. Admin Applicants (Uses Wrapper)
+  AppRoutes.adminApprenticeshipApplicants: (context) => const _ApprenticeshipApplicantsWrapper(),
 };
 
 
@@ -176,6 +187,32 @@ class _LiveClassWrapper extends StatelessWidget {
       token: args.token,
       isInstructor: args.isInstructor,
       displayName: args.displayName,
+    );
+  }
+}
+
+// 1. Arguments Class for Applicants Screen
+class ApprenticeshipApplicantsArgs {
+  final int apprenticeshipId;
+  final String jobTitle;
+
+  ApprenticeshipApplicantsArgs({
+    required this.apprenticeshipId,
+    required this.jobTitle
+  });
+}
+
+// 2. Wrapper Widget to extract arguments
+class _ApprenticeshipApplicantsWrapper extends StatelessWidget {
+  const _ApprenticeshipApplicantsWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)!.settings.arguments as ApprenticeshipApplicantsArgs;
+
+    return ApprenticeshipApplicantsScreen(
+      apprenticeshipId: args.apprenticeshipId,
+      jobTitle: args.jobTitle,
     );
   }
 }

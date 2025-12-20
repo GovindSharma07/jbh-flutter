@@ -7,7 +7,7 @@ import 'package:jbh_academy/services/api_service.dart';
 import 'package:mime/mime.dart';
 
 final apprenticeshipServiceProvider = Provider<ApprenticeshipService>((ref) {
-  final dio = ref.watch(dioProvider(ref));
+  final dio = ref.watch(dioProvider);
   return ApprenticeshipService(dio);
 });
 

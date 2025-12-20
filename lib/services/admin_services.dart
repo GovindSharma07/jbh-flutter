@@ -11,7 +11,7 @@ import '../Models/course_model.dart';
 
 // --- 1. SINGLE SOURCE OF TRUTH FOR ADMIN SERVICE ---
 final adminServicesProvider = Provider<AdminService>((ref) {
-  final dio = ref.watch(dioProvider(ref));
+  final dio = ref.watch(dioProvider);
   return AdminService(dio);
 });
 

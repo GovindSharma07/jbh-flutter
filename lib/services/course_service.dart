@@ -86,7 +86,7 @@ class CourseService {
 // --- PROVIDERS ---
 
 final courseServiceProvider = Provider<CourseService>((ref) {
-  final dio = ref.watch(dioProvider(ref));
+  final dio = ref.watch(dioProvider);
   return CourseService(dio);
 });
 

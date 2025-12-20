@@ -61,10 +61,29 @@ class StudentService {
       throw Exception(e.response?.data['message'] ?? 'Failed to load recordings');
     }
   }
+
+  Future<List<dynamic>> getAttendance() async {
+    try {
+      final response = await _dio.get('/lms/student/attendance');
+      // Expecting backend to return { success: true, attendance: [...] }
+      return response.data['attendance'];
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Failed to load attendance');
+    }
+  }
+
+  Future<List<dynamic>> getWeeklyTimetable() async {
+    try {
+      final response = await _dio.get('/lms/student/timetable/weekly');
+      return response.data['schedule'];
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Failed to load timetable');
+    }
+  }
 }
 
 // --- PROVIDER ---
 final studentServiceProvider = Provider<StudentService>((ref) {
-  final dio = ref.watch(dioProvider(ref));
+  final dio = ref.watch(dioProvider);
   return StudentService(dio);
 });

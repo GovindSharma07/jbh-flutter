@@ -7,7 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:jbh_academy/state/auth_notifier.dart';
 import 'package:jbh_academy/services/instructor_service.dart';
 import 'package:jbh_academy/app_routes.dart';
-import 'package:jbh_academy/Pages/live_class/live_class_screen.dart'; // Ensure this import is correct
+import 'package:jbh_academy/Pages/live_class/live_class_screen.dart';
 
 // --- Import Refactored Widgets ---
 import 'widgets/class_card.dart';
@@ -41,7 +41,7 @@ class InstructorDashboard extends ConsumerWidget {
           return CustomScrollView(
             slivers: [
               // 1. Header Section
-              _buildSliverAppBar(ref, user?.fullName ?? "Instructor", todayClasses.length, courses.length),
+              _buildSliverAppBar(context, ref, user?.fullName ?? "Instructor", todayClasses.length, courses.length),
 
               // 2. Today's Classes Section
               SliverToBoxAdapter(
@@ -61,7 +61,7 @@ class InstructorDashboard extends ConsumerWidget {
                         icon: Icons.event_available,
                       )
                           : SizedBox(
-                        height: 170, // Slightly taller for better spacing
+                        height: 170,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: todayClasses.length,
@@ -166,7 +166,8 @@ class InstructorDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSliverAppBar(WidgetRef ref, String name, int classCount, int courseCount) {
+  // --- UPDATED LOGOUT LOGIC HERE ---
+  Widget _buildSliverAppBar(BuildContext context, WidgetRef ref, String name, int classCount, int courseCount) {
     return SliverAppBar(
       expandedHeight: 180.0,
       floating: false,
@@ -176,7 +177,7 @@ class InstructorDashboard extends ConsumerWidget {
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)], // Professional Purple
+              colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -214,8 +215,16 @@ class InstructorDashboard extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.logout, color: Colors.white),
-          onPressed: () {
-            ref.read(authNotifierProvider.notifier).logout();
+          onPressed: () async {
+            // 1. Perform the logout logic
+            await ref.read(authNotifierProvider.notifier).logout();
+
+            // 2. Check if context is valid before navigating
+            if (context.mounted) {
+              // 3. Clear stack and go to Login
+              // Ensure '/login' matches the route name defined in your app_routes.dart or main.dart
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            }
           },
         )
       ],
@@ -223,8 +232,7 @@ class InstructorDashboard extends ConsumerWidget {
   }
 }
 
-// --- LOGIC WRAPPER FOR CLASS CARD ---
-// Extracts logic from UI to keep the main build method clean
+// ... [The _ClassCardWrapper remains unchanged] ...
 class _ClassCardWrapper extends StatelessWidget {
   final dynamic cls;
   final WidgetRef ref;
@@ -238,8 +246,6 @@ class _ClassCardWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Basic Time Check (Improve this with exact Date/Time parsing for production)
-    // For now, assuming if it's in "Today's Schedule", it's valid to start.
     final bool isLive = true;
 
     return ClassCard(
@@ -252,7 +258,6 @@ class _ClassCardWrapper extends StatelessWidget {
   }
 
   Future<void> _handleGoLive(BuildContext context) async {
-    // 1. Check Permissions
     final mic = await Permission.microphone.request();
     final cam = await Permission.camera.request();
 
@@ -265,7 +270,6 @@ class _ClassCardWrapper extends StatelessWidget {
       return;
     }
 
-    // 2. Show Loading
     if (context.mounted) {
       showDialog(
         context: context,
@@ -275,8 +279,7 @@ class _ClassCardWrapper extends StatelessWidget {
     }
 
     try {
-      // 3. Call Backend to Start/Resume Class
-      final scheduleId = cls['schedule_id']; // Ensure backend sends this!
+      final scheduleId = cls['schedule_id'];
       final title = cls['course']['title'] ?? "Live Class";
 
       final result = await ref.read(instructorServiceProvider).startLiveClass(
@@ -284,16 +287,15 @@ class _ClassCardWrapper extends StatelessWidget {
         topic: title,
       );
 
-      // 4. Navigate to Live Screen
       if (context.mounted) {
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
 
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => LiveClassScreen(
               roomId: result['roomId'],
-              token: result['token'], // Use token from backend
+              token: result['token'],
               isInstructor: true,
               displayName: userName,
             ),
@@ -302,7 +304,7 @@ class _ClassCardWrapper extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text("Failed to go live: $e"),

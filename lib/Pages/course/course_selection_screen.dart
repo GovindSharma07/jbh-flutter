@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../Components/common_app_bar.dart';
 import '../../Components/floating_custom_nav_bar.dart';
 import '../../app_routes.dart';
-import '../../services/course_service.dart'; // Import Service
+import '../../services/course_service.dart';
 import '../../Models/course_model.dart';
 
 class CourseSelectionScreen extends ConsumerStatefulWidget {
@@ -41,10 +41,14 @@ class _CourseSelectionScreenState extends ConsumerState<CourseSelectionScreen>
           _buildTabBarAndFilter(context),
           Expanded(
             child: courseListAsync.when(
+              // 1. Loading State
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
+
+              // 2. Error State (UPDATED)
+              error: (err, stack) => _buildErrorView(err),
+
+              // 3. Success State
               data: (allCourses) {
-                // Filter courses locally for tabs
                 final paidCourses = allCourses.where((c) => c.price > 0).toList();
                 final freeCourses = allCourses.where((c) => c.price == 0).toList();
 
@@ -58,10 +62,48 @@ class _CourseSelectionScreenState extends ConsumerState<CourseSelectionScreen>
               },
             ),
           ),
-          const SizedBox(height: 80), // Space for nav bar
+          const SizedBox(height: 80),
         ],
       ),
-      bottomNavigationBar: FloatingCustomNavBar(currentIndex: 0),
+      bottomNavigationBar: const FloatingCustomNavBar(currentIndex: 0),
+    );
+  }
+
+  // --- NEW: Friendly Error Widget ---
+  Widget _buildErrorView(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              "Oops! Couldn't load courses.",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Please check your internet connection or try again later.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // This forces Riverpod to re-fetch the data
+                ref.refresh(courseListProvider);
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text("Retry"),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

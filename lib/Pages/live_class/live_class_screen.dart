@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:videosdk/videosdk.dart';
-
 import 'participant_tile.dart';
 
 class LiveClassScreen extends StatefulWidget {
   final String roomId;
   final String token;
   final bool isInstructor;
-  final String displayName; // User's name (e.g. "Instructor John")
+  final String displayName;
 
   const LiveClassScreen({
     super.key,
@@ -26,28 +25,58 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
   bool _joined = false;
   Map<String, Participant> _participants = {};
 
+  // -- PAGINATION & UI STATE --
+  int _currentPage = 0;
+  final int _itemsPerPage = 4; // Number of videos per page
+
+  // Local state for instantaneous button feedback
+  bool _localMicState = false;
+  bool _localCamState = false;
+
   @override
   void initState() {
     super.initState();
     _initMeeting();
   }
 
+  @override
+  void dispose() {
+    // Clean up room listeners if needed
+    super.dispose();
+  }
+
   Future<void> _initMeeting() async {
-    // 1. Configure Room
+    // 1. Configure Room (Mic & Cam OFF by default)
     _room = VideoSDK.createRoom(
       roomId: widget.roomId,
       token: widget.token,
       displayName: widget.displayName,
-      micEnabled: true,
-      camEnabled: true,
-      defaultCameraIndex: 0, // 0 = Front Camera
+      micEnabled: false, // Default Closed
+      camEnabled: false, // Default Closed
+      defaultCameraIndex: 0,
     );
+
+    // Initialize local state to match config
+    _localMicState = false;
+    _localCamState = false;
 
     // 2. Setup Listeners
     _setupRoomListeners();
 
     // 3. Join
     await _room!.join();
+
+    // 4. Start Recording if Instructor
+    if (widget.isInstructor) {
+      try {
+        _room!.on(Events.roomJoined, () {
+          _room!.startRecording();
+          print("🔴 Recording started automatically for Instructor");
+        });
+      } catch (e) {
+        print("Failed to start recording: $e");
+      }
+    }
   }
 
   void _setupRoomListeners() {
@@ -60,11 +89,30 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
     });
 
     _room!.on(Events.participantLeft, (String participantId) {
-      if (mounted) setState(() => _participants.remove(participantId));
+      if (mounted) {
+        setState(() {
+          _participants.remove(participantId);
+          // Adjust page if empty
+          if (_participants.length < _currentPage * _itemsPerPage) {
+            if(_currentPage > 0) _currentPage--;
+          }
+        });
+      }
     });
 
     _room!.on(Events.roomLeft, () {
       if (mounted) Navigator.pop(context);
+    });
+
+    // Listen for real stream changes to keep local state in sync (failsafe)
+    _room!.on(Events.streamEnabled, (Stream stream) {
+      if (stream.kind == 'audio') setState(() => _localMicState = true);
+      if (stream.kind == 'video') setState(() => _localCamState = true);
+    });
+
+    _room!.on(Events.streamDisabled, (Stream stream) {
+      if (stream.kind == 'audio') setState(() => _localMicState = false);
+      if (stream.kind == 'video') setState(() => _localCamState = false);
     });
   }
 
@@ -85,15 +133,36 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
       );
     }
 
+    // --- PAGINATION LOGIC ---
+    // Create a single list of ALL participants (Local + Remote)
+    final List<Participant> allUsers = [
+      _room!.localParticipant,
+      ..._participants.values
+    ];
+
+    final int totalItems = allUsers.length;
+    final int totalPages = (totalItems / _itemsPerPage).ceil();
+
+    // Ensure current page is valid
+    if (_currentPage >= totalPages && totalPages > 0) _currentPage = totalPages - 1;
+    if (_currentPage < 0) _currentPage = 0;
+
+    final int startIndex = _currentPage * _itemsPerPage;
+    final int endIndex = (startIndex + _itemsPerPage < totalItems)
+        ? startIndex + _itemsPerPage
+        : totalItems;
+
+    // Get the slice of users for the current page
+    final List<Participant> pageUsers = (totalItems > 0)
+        ? allUsers.sublist(startIndex, endIndex)
+        : [];
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          "Room: ${widget.roomId}",
-          style: const TextStyle(fontSize: 14),
-        ),
+        title: Text("Room: ${widget.roomId} (Page ${_currentPage + 1}/$totalPages)"),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline, color: Colors.white),
@@ -105,41 +174,54 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
         children: [
           // 1. Video Grid
           Expanded(
-            child: _participants.isEmpty
-                // If alone, just show self
-                ? Center(
-                    child: SizedBox(
-                            width: 300,
-                            height: 400,
-                            child: ParticipantTile(
-                              participant: _room!.localParticipant,
-                            ),
-                          ),
-                  )
+            child: pageUsers.isEmpty
+                ? const Center(child: Text("No Participants", style: TextStyle(color: Colors.white)))
                 : GridView.builder(
-                    padding: const EdgeInsets.all(8),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: 1.0,
-                        ),
-                    // +1 to include Local User
-                    itemCount: _participants.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return ParticipantTile(
-                          participant: _room!.localParticipant,
-                        );
-                      }
-                      var pId = _participants.keys.elementAt(index - 1);
-                      return ParticipantTile(participant: _participants[pId]!);
-                    },
-                  ),
+              padding: const EdgeInsets.all(8),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1.0,
+              ),
+              itemCount: pageUsers.length,
+              itemBuilder: (context, index) {
+                final p = pageUsers[index];
+                return ParticipantTile(
+                  // KEY IS CRITICAL FOR PREVENTING LAG/REBUILDS
+                  key: ValueKey(p.id),
+                  participant: p,
+                  isLocal: p.id == _room!.localParticipant.id,
+                );
+              },
+            ),
           ),
 
-          // 2. Controls
+          // 2. Pagination Controls
+          if (totalPages > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                  onPressed: _currentPage > 0
+                      ? () => setState(() => _currentPage--)
+                      : null,
+                ),
+                Text(
+                  "Page ${_currentPage + 1} of $totalPages",
+                  style: const TextStyle(color: Colors.white),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+                  onPressed: _currentPage < totalPages - 1
+                      ? () => setState(() => _currentPage++)
+                      : null,
+                ),
+              ],
+            ),
+
+          // 3. Controls
           _buildControlBar(),
         ],
       ),
@@ -156,18 +238,18 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
           // Toggle Mic
           IconButton(
             onPressed: () {
-              if (_isMicOn) {
-                _room!.muteMic();
-              } else {
+              // Optimistic Update
+              setState(() => _localMicState = !_localMicState);
+
+              if (_localMicState) {
                 _room!.unmuteMic();
+              } else {
+                _room!.muteMic();
               }
-              // We rely on the event listeners to update the UI,
-              // but a setState here ensures immediate feedback for the button tap.
-              setState(() {});
             },
             icon: Icon(
-              _isMicOn ? Icons.mic : Icons.mic_off,
-              color: _isMicOn ? Colors.white : Colors.red,
+              _localMicState ? Icons.mic : Icons.mic_off,
+              color: _localMicState ? Colors.white : Colors.red,
             ),
             style: IconButton.styleFrom(backgroundColor: Colors.white24),
           ),
@@ -183,41 +265,49 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
           ),
 
           // Toggle Camera
+          // Toggle Camera
           IconButton(
-            onPressed: () {
-              if (_isCamOn) {
-                _room!.disableCam();
+            onPressed: () async {
+              // 1. Optimistic Update
+              setState(() => _localCamState = !_localCamState);
+
+              if (_localCamState) {
+                try {
+                  // FIX: Use CustomVideoTrackConfig Enum, NOT String
+                  CustomVideoTrackConfig config = widget.isInstructor
+                      ? CustomVideoTrackConfig.h720p_w1280p  // High Quality for Instructor
+                      : CustomVideoTrackConfig.h180p_w320p;  // Low Quality for Students
+
+                  // 2. Create the Custom Track
+                  CustomTrack? track = await VideoSDK.createCameraVideoTrack(
+                    encoderConfig: config,
+                    multiStream: false, // Force single stream
+                  );
+
+                  // 3. Enable Cam with the created track
+                  if (track != null) {
+                    _room!.enableCam(track);
+                  } else {
+                    print("Error: Camera track creation returned null");
+                    setState(() => _localCamState = false); // Revert UI
+                  }
+
+                } catch (e) {
+                  print("Error starting camera: $e");
+                  setState(() => _localCamState = false); // Revert UI
+                }
               } else {
-                _room!.enableCam();
+                _room!.disableCam();
               }
-              setState(() {});
             },
             icon: Icon(
-              _isCamOn ? Icons.videocam : Icons.videocam_off,
-              color: _isCamOn ? Colors.white : Colors.red,
+              _localCamState ? Icons.videocam : Icons.videocam_off,
+              color: _localCamState ? Colors.white : Colors.red,
             ),
             style: IconButton.styleFrom(backgroundColor: Colors.white24),
           ),
         ],
       ),
-    );
-  }
-
-  // Helper to check if Local Mic is On
-  bool get _isMicOn {
-    if (_room?.localParticipant == null) return false;
-    // Check if any audio stream exists in the streams map
-    return _room!.localParticipant.streams.values.any(
-      (stream) => stream.kind == 'audio',
-    );
-  }
-
-  // Helper to check if Local Camera is On
-  bool get _isCamOn {
-    if (_room?.localParticipant == null) return false;
-    // Check if any video stream exists in the streams map
-    return _room!.localParticipant.streams.values.any(
-      (stream) => stream.kind == 'video',
     );
   }
 }

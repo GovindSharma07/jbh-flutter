@@ -8,7 +8,7 @@ import 'package:mime/mime.dart';
 import '../Models/resume_model.dart';
 
 final resumeServiceProvider = Provider<ResumeService>((ref) {
-  final dio = ref.watch(dioProvider(ref));
+  final dio = ref.watch(dioProvider);
   return ResumeService(dio);
 });
 

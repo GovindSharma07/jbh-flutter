@@ -5,6 +5,8 @@ import 'package:jbh_academy/Components/common_app_bar.dart';
 import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import 'package:jbh_academy/state/apprenticeship_state.dart';
 
+import '../../app_routes.dart';
+
 class ApplyApprenticeshipScreen extends ConsumerStatefulWidget {
   const ApplyApprenticeshipScreen({super.key});
 
@@ -51,7 +53,11 @@ class _ApplyState extends ConsumerState<ApplyApprenticeshipScreen> {
     ref.listen(applicationControllerProvider, (prev, next) {
       if (next.isSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Application Submitted!"), backgroundColor: Colors.green));
-        Navigator.pop(context); // Go back to details or list
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+              (route) => false,
+        );
       } else if (next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.error!), backgroundColor: Colors.red));
       }

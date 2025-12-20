@@ -1,54 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
 import 'package:table_calendar/table_calendar.dart';
-
+import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import '../Components/common_app_bar.dart';
+import '../services/student_service.dart'; // Import StudentService
 
-class AttendanceScreen extends StatefulWidget {
-  // Define a routeName for main.dart
+// 1. Change to ConsumerStatefulWidget
+class AttendanceScreen extends ConsumerStatefulWidget {
   static const String routeName = '/attendance';
 
   const AttendanceScreen({super.key});
 
   @override
-  State<AttendanceScreen> createState() => _AttendanceScreenState();
+  ConsumerState<AttendanceScreen> createState() => _AttendanceScreenState();
 }
 
-class _AttendanceScreenState extends State<AttendanceScreen> {
+class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  bool _isLoading = true;
 
-  // --- Mock Data ---
-  // In a real app, you'd fetch this.
-  // We use this to mark days on the calendar.
-  final Map<DateTime, String> _attendanceStatus = {
-    DateTime.utc(2025, 11, 1): 'present',
-    DateTime.utc(2025, 11, 3): 'present',
-    DateTime.utc(2025, 11, 4): 'absent',
-    DateTime.utc(2025, 11, 5): 'present',
-    DateTime.utc(2025, 11, 6): 'present',
-    DateTime.utc(2025, 11, 10): 'present',
-    DateTime.utc(2025, 11, 11): 'present',
-    DateTime.utc(2025, 11, 12): 'absent',
-  };
-
-  // Stats derived from the data
-  int get _presentDays => _attendanceStatus.values
-      .where((status) => status == 'present')
-      .length;
-  int get _absentDays => _attendanceStatus.values
-      .where((status) => status == 'absent')
-      .length;
-  int get _totalDays => _presentDays + _absentDays;
+  Map<DateTime, String> _attendanceStatus = {};
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    // Call fetch after the first frame to safely use 'ref'
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchAttendance();
+    });
   }
+
+  Future<void> _fetchAttendance() async {
+    try {
+      // 2. Use ref.read to get the service
+      final records = await ref.read(studentServiceProvider).getAttendance();
+
+      final Map<DateTime, String> parsedData = {};
+
+      for (var record in records) {
+        DateTime date = DateTime.parse(record['date']).toLocal();
+        // Normalize to UTC Midnight for TableCalendar
+        DateTime dateKey = DateTime.utc(date.year, date.month, date.day);
+        parsedData[dateKey] = record['status'];
+      }
+
+      if (mounted) {
+        setState(() {
+          _attendanceStatus = parsedData;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error fetching attendance: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Stats getters
+  int get _presentDays => _attendanceStatus.values.where((s) => s == 'present').length;
+  int get _absentDays => _attendanceStatus.values.where((s) => s == 'absent').length;
+  int get _totalDays => _presentDays + _absentDays;
 
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator while fetching
+    if (_isLoading) {
+      return Scaffold(
+        appBar: buildAppBar(context),
+        body: const Center(child: CircularProgressIndicator()),
+        bottomNavigationBar: const FloatingCustomNavBar(),
+      );
+    }
+
     return Scaffold(
       appBar: buildAppBar(context),
       body: SingleChildScrollView(
@@ -58,66 +83,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // Screen Title
               Text(
                 'Attendance',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontSize: 22),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 22),
               ),
               const SizedBox(height: 20),
-              // --- Summary Cards ---
-              _buildSummaryCards(),
+
+              // Summary Cards
+              Row(
+                children: [
+                  Expanded(child: _buildInfoCard(context, title: 'Total', value: '$_totalDays', color: Colors.blueAccent)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildInfoCard(context, title: 'Present', value: '$_presentDays', color: Colors.green)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildInfoCard(context, title: 'Absent', value: '$_absentDays', color: Colors.redAccent)),
+                ],
+              ),
+
               const SizedBox(height: 24),
-              // --- Calendar ---
+
+              // Calendar
               _buildAttendanceCalendar(),
-              const SizedBox(height: 120), // Padding for the nav bar
+              const SizedBox(height: 120),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: FloatingCustomNavBar(),
+      bottomNavigationBar: const FloatingCustomNavBar(),
     );
   }
 
-  /// Builds the 3 summary cards for Total, Present, Absent
-  Widget _buildSummaryCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildInfoCard(
-            context,
-            title: 'Total Days',
-            value: _totalDays.toString(),
-            color: Colors.blueAccent,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildInfoCard(
-            context,
-            title: 'Present',
-            value: _presentDays.toString(),
-            color: Colors.green,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildInfoCard(
-            context,
-            title: 'Absent',
-            value: _absentDays.toString(),
-            color: Colors.redAccent,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Helper for a single summary card
-  Widget _buildInfoCard(BuildContext context,
-      {required String title, required String value, required Color color}) {
+  Widget _buildInfoCard(BuildContext context, {required String title, required String value, required Color color}) {
     return Card(
       color: Theme.of(context).cardColor,
       elevation: 2,
@@ -127,30 +123,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            Text(title, style: const TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
     );
   }
 
-  /// Builds the interactive TableCalendar
   Widget _buildAttendanceCalendar() {
     return Card(
       color: Theme.of(context).cardColor,
@@ -167,47 +148,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           onDaySelected: (selectedDay, focusedDay) {
             setState(() {
               _selectedDay = selectedDay;
-              _focusedDay = focusedDay; // update `_focusedDay` here as well
+              _focusedDay = focusedDay;
             });
           },
           onPageChanged: (focusedDay) {
             _focusedDay = focusedDay;
           },
-          // --- Custom Styling ---
-          headerStyle: HeaderStyle(
+          headerStyle: const HeaderStyle(
             titleCentered: true,
             formatButtonVisible: false,
-            titleTextStyle:
-            const TextStyle(color: Colors.black, fontSize: 18),
-            leftChevronIcon:
-            const Icon(Icons.chevron_left, color: Colors.black),
-            rightChevronIcon:
-            const Icon(Icons.chevron_right, color: Colors.black),
+            titleTextStyle: TextStyle(color: Colors.black, fontSize: 18),
+            leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
+            rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
           ),
           calendarStyle: CalendarStyle(
-            // Use black for most text
             defaultTextStyle: const TextStyle(color: Colors.black),
             weekendTextStyle: const TextStyle(color: Colors.black),
-            outsideTextStyle: const TextStyle(color: Colors.grey),
-
-            // Style for "Today"
-            todayDecoration: BoxDecoration(
-              color: Colors.blueAccent.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
+            todayDecoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), shape: BoxShape.circle),
             todayTextStyle: const TextStyle(color: Colors.blueAccent),
-
-            // Style for "Selected Day"
-            selectedDecoration: const BoxDecoration(
-              color: Colors.blueAccent,
-              shape: BoxShape.circle,
-            ),
+            selectedDecoration: const BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
             selectedTextStyle: const TextStyle(color: Colors.white),
           ),
-          // --- Event Markers ---
           calendarBuilders: CalendarBuilders(
             markerBuilder: (context, day, events) {
-              final status = _attendanceStatus[DateTime.utc(day.year, day.month, day.day)];
+              final dateKey = DateTime.utc(day.year, day.month, day.day);
+              final status = _attendanceStatus[dateKey];
               if (status != null) {
                 return Positioned(
                   bottom: 1,
@@ -215,9 +180,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: status == 'present'
-                          ? Colors.green
-                          : Colors.redAccent,
+                      color: status == 'present' ? Colors.green : Colors.redAccent,
                       shape: BoxShape.circle,
                     ),
                   ),

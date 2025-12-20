@@ -2,12 +2,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jbh_academy/services/secure_storage_service.dart';
 import 'package:jbh_academy/state/auth_notifier.dart';
-
+// Ensure backend_endpoint.dart is imported or define baseUrl
 import '../backend_endpoint.dart';
 
-final dioProvider = Provider.family<Dio, Ref>((ref, externalRef) {
+// FIX: Change Provider.family -> Provider
+final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
-  final secureStorageService = externalRef.read(secureStorageServiceProvider);
+
+  // FIX: Use 'ref' directly instead of 'externalRef'
+  final secureStorageService = ref.read(secureStorageServiceProvider);
 
   dio.interceptors.add(
     InterceptorsWrapper(
@@ -19,13 +22,12 @@ final dioProvider = Provider.family<Dio, Ref>((ref, externalRef) {
         return handler.next(options);
       },
       onError: (e, handler) async {
-        // --- FIX: Check if this is a login request ---
         final isLoginRequest = e.requestOptions.path.contains('/auth/login');
 
-        // Only trigger global logout if it's NOT a login request
         if ((e.response?.statusCode == 401 || e.response?.statusCode == 403) &&
             !isLoginRequest) {
-          AuthNotifier.triggerLogout(externalRef);
+          // FIX: Pass the internal 'ref' if triggerLogout expects Ref
+          AuthNotifier.triggerLogout(ref);
         }
         return handler.next(e);
       },

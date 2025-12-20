@@ -3,8 +3,13 @@ import 'package:videosdk/videosdk.dart';
 
 class ParticipantTile extends StatefulWidget {
   final Participant participant;
+  final bool isLocal;
 
-  const ParticipantTile({super.key, required this.participant});
+  const ParticipantTile({
+    super.key,
+    required this.participant,
+    this.isLocal = false,
+  });
 
   @override
   State<ParticipantTile> createState() => _ParticipantTileState();
@@ -19,10 +24,16 @@ class _ParticipantTileState extends State<ParticipantTile> {
     super.initState();
     _initStreams();
     _addListeners();
+
+    // --- OPTIMIZATION ---
+    // If this is a remote participant (not me), request Low Quality.
+    // This reduces lag significantly when viewing a grid.
+    if (!widget.isLocal) {
+      widget.participant.setQuality('low');
+    }
   }
 
   void _initStreams() {
-    // Check initially active streams
     widget.participant.streams.forEach((key, stream) {
       if (stream.kind == 'video') {
         _videoStream = stream;
@@ -76,6 +87,8 @@ class _ParticipantTileState extends State<ParticipantTile> {
               child: RTCVideoView(
                 _videoStream!.renderer!,
                 objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                // Mirror local user video for better UX
+                mirror: widget.isLocal,
               ),
             )
           else
@@ -94,7 +107,7 @@ class _ParticipantTileState extends State<ParticipantTile> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                widget.participant.displayName,
+                widget.isLocal ? "You" : widget.participant.displayName,
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),

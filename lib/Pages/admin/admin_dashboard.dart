@@ -60,11 +60,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   label: "View Applications",
                   color: Colors.blue,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Coming Soon: Application List"),
-                      ),
-                    );
+                    Navigator.pushNamed(context, AppRoutes.adminApprenticeshipList);
                   },
                 ),
               ],
