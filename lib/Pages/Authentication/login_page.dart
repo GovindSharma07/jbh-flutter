@@ -34,14 +34,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       // 1. Success: Logged in
       if (next.token != null && next.user != null) {
         // --- UPDATED NAVIGATION LOGIC ---
-        String nextRoute = AppRoutes.home; // Default to Student
+        String nextRoute = AppRoutes.login; // Default to Student
 
         // Normalize role to lowercase to handle "Instructor" vs "instructor"
         final role = next.user?.role.toLowerCase().trim() ?? 'student';
 
         if (role == 'admin') {
           nextRoute = AppRoutes.adminDashboard;
-        } else if (role == 'instructor') {
+        } else if (role == 'student') {
+          nextRoute = AppRoutes.home;
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -49,13 +51,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
           );
-        } else {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            nextRoute,
-            (route) => false,
-          );
         }
+
+        Navigator.pushNamedAndRemoveUntil(context, nextRoute, (route) => false);
       }
       // 2. Unverified: Navigate to Verification (Check tempEmail)
       else if (!next.isLoading &&
