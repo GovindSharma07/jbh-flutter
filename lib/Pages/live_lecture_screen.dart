@@ -4,6 +4,7 @@ import 'package:jbh_academy/Components/common_app_bar.dart';
 import 'package:jbh_academy/Components/floating_custom_nav_bar.dart';
 import 'package:jbh_academy/Components/upcoming_lecture_card.dart';
 import 'package:jbh_academy/services/student_service.dart';
+import 'package:jbh_academy/state/auth_notifier.dart';
 
 import '../Components/live_lecture_card.dart';
 import '../app_routes.dart';
@@ -60,11 +61,14 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
           .read(studentServiceProvider)
           .joinLiveLecture(liveLectureId);
 
+      final authstate = ref.read(authNotifierProvider);
+
       // Close loading dialog
       if (mounted) Navigator.pop(context);
 
       final String token = data['token'];
       final String roomId = data['roomId'];
+      String realName = authstate.user?.fullName ?? 'Student';
 
       // 2. Navigate to the actual Video Screen
       if (mounted) {
@@ -74,7 +78,7 @@ class _LecturesScreenState extends ConsumerState<LecturesScreen> {
           arguments: LiveClassArgs(
             roomId: roomId,
             token: token,
-            displayName: "Student",
+            displayName: realName,
           ),
         );
       }

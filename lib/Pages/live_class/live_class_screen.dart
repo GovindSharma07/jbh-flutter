@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:videosdk/videosdk.dart';
-import 'participant_tile.dart';
+
+import 'chat_view.dart';
 
 class LiveClassScreen extends StatefulWidget {
   final String roomId;
@@ -19,68 +22,86 @@ class LiveClassScreen extends StatefulWidget {
 }
 
 class _LiveClassScreenState extends State<LiveClassScreen> {
+  // --- SDK STATE ---
   Room? _room;
   bool _joined = false;
-  Map<String, Participant> _participants = {};
+  Participant? _instructor;
+  Stream? _instructorVideoStream;
+  final Map<String, Participant> _participants = {};
 
-  // -- PAGINATION & UI STATE --
-  int _currentPage = 0;
-  final int _itemsPerPage = 4; // Number of videos per page
-
-  // Local state for instantaneous button feedback
-  bool _localMicState = false;
-  bool _localCamState = false;
+  // --- UI STATE ---
+  bool _showControls = true;
+  Timer? _controlsTimer;
 
   @override
   void initState() {
     super.initState();
     _initMeeting();
+    _resetControlsTimer(); // Start timer to auto-hide initially
   }
 
   @override
   void dispose() {
-    // Clean up room listeners if needed
+    _controlsTimer?.cancel();
+    if (_room != null) {
+      _room!.leave();
+    }
     super.dispose();
   }
 
+  // --- UI CONTROL LOGIC ---
+  void _toggleControls() {
+    setState(() => _showControls = !_showControls);
+    if (_showControls) {
+      _resetControlsTimer();
+    } else {
+      _controlsTimer?.cancel();
+    }
+  }
+
+  void _resetControlsTimer() {
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showControls = false);
+    });
+  }
+
+  // --- SDK INITIALIZATION ---
   Future<void> _initMeeting() async {
-    // 1. Configure Room (Mic & Cam OFF by default)
     _room = VideoSDK.createRoom(
       roomId: widget.roomId,
       token: widget.token,
       displayName: widget.displayName,
-      micEnabled: false, // Default Closed
-      camEnabled: false, // Default Closed
+      micEnabled: false,
+      camEnabled: false,
       defaultCameraIndex: 0,
     );
 
-    // Initialize local state to match config
-    _localMicState = false;
-    _localCamState = false;
-
-    // 2. Setup Listeners
     _setupRoomListeners();
-
-    // 3. Join
     await _room!.join();
   }
 
   void _setupRoomListeners() {
     _room!.on(Events.roomJoined, () {
       if (mounted) setState(() => _joined = true);
+      _room!.participants.forEach((key, p) {
+        setState(() => _participants[p.id] = p);
+        _handleParticipant(p);
+      });
     });
 
     _room!.on(Events.participantJoined, (Participant p) {
-      if (mounted) setState(() => _participants[p.id] = p);
+      setState(() => _participants[p.id] = p);
+      _handleParticipant(p);
     });
 
     _room!.on(Events.participantLeft, (String participantId) {
       if (mounted) {
         setState(() {
           _participants.remove(participantId);
-          // Adjust page if empty
-          if (_participants.length < _currentPage * _itemsPerPage) {
-            if(_currentPage > 0) _currentPage--;
+          if (_instructor?.id == participantId) {
+            _instructor = null;
+            _instructorVideoStream = null;
           }
         });
       }
@@ -89,208 +110,352 @@ class _LiveClassScreenState extends State<LiveClassScreen> {
     _room!.on(Events.roomLeft, () {
       if (mounted) Navigator.pop(context);
     });
+  }
 
-    // Listen for real stream changes to keep local state in sync (failsafe)
-    _room!.on(Events.streamEnabled, (Stream stream) {
-      if (stream.kind == 'audio') setState(() => _localMicState = true);
-      if (stream.kind == 'video') setState(() => _localCamState = true);
+  void _handleParticipant(Participant p) {
+    p.streams.forEach((key, stream) {
+      if (_isVisualStream(stream)) {
+        setState(() {
+          _instructor = p;
+          _instructorVideoStream = stream;
+        });
+      }
     });
 
-    _room!.on(Events.streamDisabled, (Stream stream) {
-      if (stream.kind == 'audio') setState(() => _localMicState = false);
-      if (stream.kind == 'video') setState(() => _localCamState = false);
+    p.on(Events.streamEnabled, (Stream stream) {
+      if (_isVisualStream(stream)) {
+        if (mounted) {
+          setState(() {
+            _instructor = p;
+            _instructorVideoStream = stream;
+          });
+        }
+      }
+    });
+
+    p.on(Events.streamDisabled, (Stream stream) {
+      if (_isVisualStream(stream) && _instructorVideoStream?.id == stream.id) {
+        if (mounted) {
+          setState(() => _instructorVideoStream = null);
+          // Retry check for race conditions
+          p.streams.forEach((key, s) {
+            if (_isVisualStream(s) && s.id != stream.id) {
+              setState(() => _instructorVideoStream = s);
+            }
+          });
+        }
+      }
     });
   }
 
+  bool _isVisualStream(Stream stream) {
+    return stream.kind == 'video' ||
+        stream.kind == 'share' ||
+        stream.kind == 'screen';
+  }
+
+  // --- BUILD UI ---
   @override
   Widget build(BuildContext context) {
-    if (!_joined) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text("Connecting to Classroom..."),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // --- PAGINATION LOGIC ---
-    // Create a single list of ALL participants (Local + Remote)
-    final List<Participant> allUsers = [
-      _room!.localParticipant,
-      ..._participants.values
-    ];
-
-    final int totalItems = allUsers.length;
-    final int totalPages = (totalItems / _itemsPerPage).ceil();
-
-    // Ensure current page is valid
-    if (_currentPage >= totalPages && totalPages > 0) _currentPage = totalPages - 1;
-    if (_currentPage < 0) _currentPage = 0;
-
-    final int startIndex = _currentPage * _itemsPerPage;
-    final int endIndex = (startIndex + _itemsPerPage < totalItems)
-        ? startIndex + _itemsPerPage
-        : totalItems;
-
-    // Get the slice of users for the current page
-    final List<Participant> pageUsers = (totalItems > 0)
-        ? allUsers.sublist(startIndex, endIndex)
-        : [];
-
+    // Note: We use a Stack to layer Controls ON TOP of Video
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text("Room: ${widget.roomId} (Page ${_currentPage + 1}/$totalPages)"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          // 1. Video Grid
-          Expanded(
-            child: pageUsers.isEmpty
-                ? const Center(child: Text("No Participants", style: TextStyle(color: Colors.white)))
-                : GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.0,
+          // LAYER 1: The Video (Full Screen Tap Detector)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _toggleControls,
+              behavior: HitTestBehavior.translucent,
+              child: Container(
+                color: Colors.black,
+                alignment: Alignment.center,
+                child: _buildVideoContent(),
               ),
-              itemCount: pageUsers.length,
-              itemBuilder: (context, index) {
-                final p = pageUsers[index];
-                return ParticipantTile(
-                  // KEY IS CRITICAL FOR PREVENTING LAG/REBUILDS
-                  key: ValueKey(p.id),
-                  participant: p,
-                  isLocal: p.id == _room!.localParticipant.id,
-                );
-              },
             ),
           ),
 
-          // 2. Pagination Controls
-          if (totalPages > 1)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                  onPressed: _currentPage > 0
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                ),
-                Text(
-                  "Page ${_currentPage + 1} of $totalPages",
-                  style: const TextStyle(color: Colors.white),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
-                  onPressed: _currentPage < totalPages - 1
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                ),
-              ],
-            ),
+          // LAYER 2: Top Bar (Animated)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            top: _showControls ? 0 : -100,
+            // Hide by moving up
+            left: 0,
+            right: 0,
+            child: _buildTopBar(),
+          ),
 
-          // 3. Controls
-          _buildControlBar(),
+          // LAYER 3: Bottom Bar (Animated)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            bottom: _showControls ? 0 : -100,
+            // Hide by moving down
+            left: 0,
+            right: 0,
+            child: _buildBottomBar(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildControlBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      color: Colors.grey[900],
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  // --- WIDGETS ---
+
+  Widget _buildVideoContent() {
+    if (!_joined) {
+      return const CircularProgressIndicator(color: Colors.white);
+    }
+
+    // Fallback check
+    if (_instructor != null && _instructorVideoStream == null) {
+      try {
+        final fallback = _instructor!.streams.values.firstWhere(
+          (s) => _isVisualStream(s),
+        );
+        _instructorVideoStream = fallback;
+      } catch (e) {
+        // No stream
+      }
+    }
+
+    // 1. VIDEO VIEW
+    if (_instructor != null && _instructorVideoStream != null) {
+      return AspectRatio(
+        aspectRatio: 16 / 9, // Keep 16:9 ratio
+        child: RTCVideoView(
+          _instructorVideoStream!.renderer!,
+          // 'contain' ensures the whole whiteboard is visible without cropping
+          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+        ),
+      );
+    }
+
+    // 2. AUDIO ONLY VIEW
+    if (_instructor != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Toggle Mic
-          IconButton(
-            onPressed: () {
-              // Optimistic Update
-              setState(() => _localMicState = !_localMicState);
-
-              if (_localMicState) {
-                _room!.unmuteMic();
-              } else {
-                _room!.muteMic();
-              }
-            },
-            icon: Icon(
-              _localMicState ? Icons.mic : Icons.mic_off,
-              color: _localMicState ? Colors.white : Colors.red,
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.grey[800],
+            child: Text(
+              _instructor!.displayName.isNotEmpty
+                  ? _instructor!.displayName.substring(0, 1).toUpperCase()
+                  : "I",
+              style: const TextStyle(fontSize: 30, color: Colors.white),
             ),
-            style: IconButton.styleFrom(backgroundColor: Colors.white24),
           ),
-
-          // End Call
-          IconButton(
-            onPressed: () {
-              _room!.leave();
-            },
-            icon: const Icon(Icons.call_end, color: Colors.white),
-            style: IconButton.styleFrom(backgroundColor: Colors.red),
-            padding: const EdgeInsets.all(16),
+          const SizedBox(height: 16),
+          Text(
+            "${_instructor!.displayName} (Audio Only)",
+            style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
+          const SizedBox(height: 8),
+          const Text(
+            "Waiting for video feed...",
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ],
+      );
+    }
 
-          // Toggle Camera
-          // Toggle Camera
-          IconButton(
-            onPressed: () async {
-              // 1. Optimistic Update
-              setState(() => _localCamState = !_localCamState);
+    // 3. WAITING VIEW
+    return const Text(
+      "Waiting for Instructor...",
+      style: TextStyle(color: Colors.white54),
+    );
+  }
 
-              if (_localCamState) {
-                try {
-                  // ALWAYS use low/standard quality for mobile students to save data/battery
-                  CustomVideoTrackConfig config = CustomVideoTrackConfig.h180p_w320p;
-
-                  CustomTrack? track = await VideoSDK.createCameraVideoTrack(
-                    encoderConfig: config,
-                    multiStream: false,
-                  );
-
-                  // 3. Enable Cam with the created track
-                  if (track != null) {
-                    _room!.enableCam(track);
-                  } else {
-                    print("Error: Camera track creation returned null");
-                    setState(() => _localCamState = false); // Revert UI
-                  }
-
-                } catch (e) {
-                  print("Error starting camera: $e");
-                  setState(() => _localCamState = false); // Revert UI
-                }
-              } else {
-                _room!.disableCam();
-              }
-            },
-            icon: Icon(
-              _localCamState ? Icons.videocam : Icons.videocam_off,
-              color: _localCamState ? Colors.white : Colors.red,
+  Widget _buildTopBar() {
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8, // Safe Area
+        bottom: 12,
+        left: 16,
+        right: 16,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black87,
+            Colors.transparent,
+          ], // Gradient for visibility
+        ),
+      ),
+      child: Row(
+        children: [
+          // const Icon(Icons.live_tv, color: Colors.red, size: 20),
+          // const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(4),
             ),
-            style: IconButton.styleFrom(backgroundColor: Colors.white24),
+            child: const Text(
+              "LIVE",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            "Live Class",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true, // Important for keyboard view
+                backgroundColor: Colors.transparent,
+                builder: (context) => ChatView(room: _room!),
+              );
+            },
+            tooltip: "Chat",
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.people_alt_outlined, color: Colors.white),
+            onPressed: _showParticipantsSheet,
+            tooltip: "Classmates",
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 16,
+        top: 16,
+        left: 24,
+        right: 24,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [Colors.black87, Colors.transparent],
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 150,
+            child: ElevatedButton(
+              onPressed: () {
+                _room!.leave();
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.withOpacity(0.9),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                elevation: 0,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.call_end, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    "Leave",
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showParticipantsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        final users = _participants.values.toList();
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Classmates (${users.length})",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: users.isEmpty
+                    ? const Center(
+                        child: Text(
+                          "No other students yet.",
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: users.length,
+                        itemBuilder: (context, index) {
+                          final p = users[index];
+                          if (p.id == _instructor?.id)
+                            return const SizedBox.shrink();
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blueAccent,
+                              child: Text(
+                                p.displayName.isNotEmpty
+                                    ? p.displayName
+                                          .substring(0, 1)
+                                          .toUpperCase()
+                                    : "?",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            title: Text(
+                              p.displayName,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            trailing: const Icon(
+                              Icons.circle,
+                              color: Colors.green,
+                              size: 12,
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
